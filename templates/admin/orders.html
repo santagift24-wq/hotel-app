@@ -453,14 +453,14 @@
                                     <div style="margin-bottom: 8px; padding: 8px; background: #d4edda; border-left: 4px solid #28a745; border-radius: 4px; color: #155724; font-weight: 600;">
                                         ✓ {{ assigned_name or 'Assigned' }}
                                     </div>
-                                    <select class="assign-select" onchange="assignOrder({{ order.id }}, this.value)" style="padding: 5px; border-radius: 5px; border: 1px solid #ddd; font-size: 12px; width: 100%;">
+                                    <select class="assign-select" onchange="assignOrder({{ order.id }}, this.value, this)" style="padding: 5px; border-radius: 5px; border: 1px solid #ddd; font-size: 12px; width: 100%;">
                                         <option value="">Change Assignment</option>
                                         {% for sa in subadmins %}
                                             <option value="{{ sa.id }}" {% if order.assigned_to == sa.id %}selected{% endif %}>{{ sa.name }}</option>
                                         {% endfor %}
                                     </select>
                                 {% else %}
-                                    <select class="assign-select" onchange="assignOrder({{ order.id }}, this.value)" style="padding: 5px; border-radius: 5px; border: 1px solid #ddd; width: 100%;">
+                                    <select class="assign-select" onchange="assignOrder({{ order.id }}, this.value, this)" style="padding: 5px; border-radius: 5px; border: 1px solid #ddd; width: 100%;">
                                         <option value="">-- Assign --</option>
                                         {% for sa in subadmins %}
                                             <option value="{{ sa.id }}">{{ sa.name }}</option>
@@ -550,21 +550,34 @@
             }
         }
         
-        function assignOrder(orderId, subadminId) {
+        function assignOrder(orderId, subadminId, selectElement) {
+            if (!subadminId) {
+                console.log('No subadmin selected');
+                return;
+            }
+            
             fetch('/admin/order/' + orderId + '/assign', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({subadmin_id: subadminId ? parseInt(subadminId) : null})
+                body: JSON.stringify({subadmin_id: parseInt(subadminId)})
             })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
                     // Show brief confirmation
-                    const sel = event.target;
-                    sel.style.background = '#d4edda';
-                    setTimeout(() => sel.style.background = '', 1000);
+                    selectElement.style.background = '#d4edda';
+                    setTimeout(() => selectElement.style.background = '', 1000);
                     // Auto-refresh will update the table
+                    autoRefreshOrders();
+                } else {
+                    alert('Error assigning order: ' + (data.message || 'Unknown error'));
+                    selectElement.value = '';
                 }
+            })
+            .catch(err => {
+                console.error('Assign error:', err);
+                alert('Failed to assign order');
+                selectElement.value = '';
             });
         }
         
