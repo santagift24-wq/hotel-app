@@ -391,43 +391,51 @@
         </div>
         
         <div class="layout">
-            <div>
-                {% set menu_by_category = {} %}
-                {% for item in menu_items %}
-                    {% if item.category not in menu_by_category %}
-                        {% set _ = menu_by_category.update({item.category: []}) %}
-                    {% endif %}
-                    {% set _ = menu_by_category[item.category].append(item) %}
-                {% endfor %}
-                
-                {% for category in menu_by_category.keys() | sort %}
-                <div class="menu-section">
-                    <h2>{{ category }}</h2>
-                    <div class="menu-grid">
-                        {% for item in menu_by_category[category] %}
-                        <div class="menu-card">
-                            {% if item.image_path %}
-                            <img src="{{ item.image_path }}" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px 8px 0 0;">
-                            {% else %}
-                            <div style="width: 100%; height: 180px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px 8px 0 0; display: flex; align-items: center; justify-content: center; color: white; font-size: 3em;">🍽️</div>
-                            {% endif %}
-                            <div class="menu-card-header">
-                                <h3>{{ item.name }}</h3>
-                                <p>{{ item.description }}</p>
-                            </div>
-                            <div class="menu-card-footer">
-                                <span class="price">₹{{ "%.2f"|format(item.price) }}</span>
-                                <div class="qty-control">
-                                    <button onclick="decreaseQty({{ item.id }})">−</button>
-                                    <span id="qty-{{ item.id }}">0</span>
-                                    <button onclick="increaseQty({{ item.id }}, '{{ item.name }}', {{ item.price }})">+</button>
-                                </div>
+            <!-- Search Bar -->
+            <div style="margin-bottom: 30px;">
+                <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                    <input type="text" id="menuSearch" placeholder="🔍 Search menu items..." 
+                           style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box; transition: border-color 0.3s;"
+                           onkeyup="searchMenu()" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e0'">
+                </div>
+            </div>
+            
+            {% set menu_by_category = {} %}
+            {% for item in menu_items %}
+                {% if item.category not in menu_by_category %}
+                    {% set _ = menu_by_category.update({item.category: []}) %}
+                {% endif %}
+                {% set _ = menu_by_category[item.category].append(item) %}
+            {% endfor %}
+            
+            {% for category in menu_by_category.keys() | sort %}
+            <div class="menu-section" data-category="{{ category }}">
+                <h2>{{ category }}</h2>
+                <div class="menu-grid">
+                    {% for item in menu_by_category[category] %}
+                    <div class="menu-card" data-item-name="{{ item.name|lower }}" data-item-category="{{ category|lower }}" data-item-id="{{ item.id }}">
+                        {% if item.image_path %}
+                        <img src="{{ item.image_path }}" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px 8px 0 0;">
+                        {% else %}
+                        <div style="width: 100%; height: 180px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px 8px 0 0; display: flex; align-items: center; justify-content: center; color: white; font-size: 3em;">🍽️</div>
+                        {% endif %}
+                        <div class="menu-card-header">
+                            <h3>{{ item.name }}</h3>
+                            <p>{{ item.description }}</p>
+                        </div>
+                        <div class="menu-card-footer">
+                            <span class="price">₹{{ "%.2f"|format(item.price) }}</span>
+                            <div class="qty-control">
+                                <button onclick="decreaseQty({{ item.id }})">−</button>
+                                <span id="qty-{{ item.id }}">0</span>
+                                <button onclick="increaseQty({{ item.id }}, '{{ item.name }}', {{ item.price }})">+</button>
                             </div>
                         </div>
-                        {% endfor %}
                     </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
+            </div>
+            {% endfor %}
                 
                 {% if not menu_items %}
                 <div class="empty-state" style="text-align: center; padding: 40px; color: #999;">
@@ -482,6 +490,40 @@
             })
             .catch(err => console.log('Hotel name loading skipped'));
 
+        // Search Menu Items Function
+        function searchMenu() {
+            const searchTerm = document.getElementById('menuSearch').value.toLowerCase();
+            const menuCards = document.querySelectorAll('.menu-card');
+            const menuSections = document.querySelectorAll('.menu-section');
+            
+            menuCards.forEach(card => {
+                const itemName = card.getAttribute('data-item-name');
+                const itemCategory = card.getAttribute('data-item-category');
+                
+                if (searchTerm === '') {
+                    // Show all if search is empty
+                    card.style.display = 'block';
+                } else if (itemName.includes(searchTerm) || itemCategory.includes(searchTerm)) {
+                    // Show matching items
+                    card.style.display = 'block';
+                } else {
+                    // Hide non-matching items
+                    card.style.display = 'none';
+                }
+            });
+            
+            // Hide category sections that have no visible items
+            menuSections.forEach(section => {
+                const visibleCards = section.querySelectorAll('.menu-card[style="display: block"]').length;
+                const totalCards = section.querySelectorAll('.menu-card').length;
+                
+                if (visibleCards === 0 && totalCards > 0) {
+                    section.style.display = 'none';
+                } else {
+                    section.style.display = 'block';
+                }
+            });
+        }
         
         function increaseQty(itemId, itemName, itemPrice) {
             if (!canModifyOrder && orderConfirmed) {
