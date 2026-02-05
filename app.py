@@ -873,38 +873,48 @@ app.jinja_env.filters['from_json'] = from_json
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'restaurant.db')
 
 def init_db():
-    """Initialize database"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    # Admin users table
-    c.execute('''CREATE TABLE IF NOT EXISTS admin_users (
-        id INTEGER PRIMARY KEY,
-        username TEXT UNIQUE,
-        password TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Tables QR codes
-    c.execute('''CREATE TABLE IF NOT EXISTS restaurant_tables (
-        id INTEGER PRIMARY KEY,
-        table_number INTEGER UNIQUE,
-        qr_code TEXT,
-        is_active INTEGER DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Menu items
-    c.execute('''CREATE TABLE IF NOT EXISTS menu_items (
-        id INTEGER PRIMARY KEY,
-        name TEXT,
-        category TEXT,
-        price REAL,
-        description TEXT,
-        image_path TEXT,
-        is_available INTEGER DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
+    """Initialize database - robust version that continues on errors"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        # Admin users table
+        try:
+            c.execute('''CREATE TABLE IF NOT EXISTS admin_users (
+                id INTEGER PRIMARY KEY,
+                username TEXT UNIQUE,
+                password TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )''')
+        except Exception as e:
+            print(f"Note: admin_users table: {e}")
+        
+        # Tables QR codes
+        try:
+            c.execute('''CREATE TABLE IF NOT EXISTS restaurant_tables (
+                id INTEGER PRIMARY KEY,
+                table_number INTEGER UNIQUE,
+                qr_code TEXT,
+                is_active INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )''')
+        except Exception as e:
+            print(f"Note: restaurant_tables: {e}")
+        
+        # Menu items
+        try:
+            c.execute('''CREATE TABLE IF NOT EXISTS menu_items (
+                id INTEGER PRIMARY KEY,
+                name TEXT,
+                category TEXT,
+                price REAL,
+                description TEXT,
+                image_path TEXT,
+                is_available INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )''')
+        except Exception as e:
+            print(f"Note: menu_items table: {e}")
     
     # Settings table
     c.execute('''CREATE TABLE IF NOT EXISTS settings (
@@ -2109,6 +2119,11 @@ def kitchen_display():
 # CUSTOMER ROUTES
 # ============================================================================
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Railway deployment"""
+    return jsonify({'status': 'healthy', 'message': 'Hotel app is running'}), 200
+
 @app.route('/')
 def index():
     """Home page"""
@@ -2605,6 +2620,12 @@ def api_cleanup_old_data():
 def not_found(error):
     return render_template('404.html'), 404
 
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle internal server errors gracefully"""
+    print(f"[ERROR 500] Internal Server Error: {str(error)}")
+    return jsonify({'error': 'Internal Server Error', 'message': 'An unexpected error occurred'}), 500
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -2639,12 +2660,18 @@ if __name__ == '__main__':
     print("="*70 + "\n")
     
     # Start 24-hour report scheduler
-    start_daily_report_scheduler()
-    print("[OK] Daily report scheduler started (runs every 24 hours)")
+    try:
+        start_daily_report_scheduler()
+        print("[OK] Daily report scheduler started (runs every 24 hours)")
+    except Exception as e:
+        print(f"[WARNING] Failed to start daily report scheduler: {e}")
     
     # Start daily data deletion scheduler (90-day retention)
-    schedule_daily_deletion()
-    print("[OK] 90-day data retention scheduler started")
+    try:
+        schedule_daily_deletion()
+        print("[OK] 90-day data retention scheduler started")
+    except Exception as e:
+        print(f"[WARNING] Failed to start daily deletion scheduler: {e}")
     
     print("[INFO] Starting Flask server...")
     port = int(os.environ.get('PORT', 5000))
