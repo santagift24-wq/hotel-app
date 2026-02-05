@@ -1389,14 +1389,11 @@ def admin_profile():
     profile = {
         'hotel_name': settings['hotel_name'] if settings else 'Royal Restaurant',
         'hotel_address': settings['hotel_address'] if settings else '',
-        'hotel_email': settings['hotel_email'] if settings else '',
-        'hotel_phone': settings['hotel_phone'] if settings else '',
         'hotel_gstn': settings['hotel_gstn'] if settings else '',
         'hotel_food_license': settings['hotel_food_license'] if settings else '',
+        'owner_email': settings['owner_email'] if settings else '',
         'print_name': settings['print_name'] if settings and settings['print_name'] is not None else 1,
         'print_address': settings['print_address'] if settings and settings['print_address'] is not None else 1,
-        'print_email': settings['print_email'] if settings and settings['print_email'] is not None else 1,
-        'print_phone': settings['print_phone'] if settings and settings['print_phone'] is not None else 1,
         'print_gstn': settings['print_gstn'] if settings and settings['print_gstn'] is not None else 1,
         'print_license': settings['print_license'] if settings and settings['print_license'] is not None else 1
     }
@@ -1624,14 +1621,11 @@ def profile_setting():
                 'profile': {
                     'hotel_name': result['hotel_name'] or 'Royal Restaurant',
                     'hotel_address': result['hotel_address'] or '',
-                    'hotel_email': result['hotel_email'] or '',
-                    'hotel_phone': result['hotel_phone'] or '',
+                    'hotel_email': result['owner_email'] or '',
                     'hotel_gstn': result['hotel_gstn'] or '',
                     'hotel_food_license': result['hotel_food_license'] or '',
                     'print_name': result['print_name'] if result['print_name'] is not None else 1,
                     'print_address': result['print_address'] if result['print_address'] is not None else 1,
-                    'print_email': result['print_email'] if result['print_email'] is not None else 1,
-                    'print_phone': result['print_phone'] if result['print_phone'] is not None else 1,
                     'print_gstn': result['print_gstn'] if result['print_gstn'] is not None else 1,
                     'print_license': result['print_license'] if result['print_license'] is not None else 1
                 }
@@ -1643,27 +1637,21 @@ def profile_setting():
         c.execute('''UPDATE settings SET 
                      hotel_name = ?,
                      hotel_address = ?,
-                     hotel_email = ?,
-                     hotel_phone = ?,
+                     owner_email = ?,
                      hotel_gstn = ?,
                      hotel_food_license = ?,
                      print_name = ?,
                      print_address = ?,
-                     print_email = ?,
-                     print_phone = ?,
                      print_gstn = ?,
                      print_license = ?,
                      updated_at = CURRENT_TIMESTAMP''',
                  (data.get('hotel_name', 'Royal Restaurant'),
                   data.get('hotel_address', ''),
                   data.get('hotel_email', ''),
-                  data.get('hotel_phone', ''),
                   data.get('hotel_gstn', ''),
                   data.get('hotel_food_license', ''),
                   int(data.get('print_name', 1)),
                   int(data.get('print_address', 1)),
-                  int(data.get('print_email', 1)),
-                  int(data.get('print_phone', 1)),
                   int(data.get('print_gstn', 1)),
                   int(data.get('print_license', 1))))
         conn.commit()
@@ -1786,14 +1774,11 @@ def view_order(order_id):
         profile = {
             'hotel_name': settings['hotel_name'] or 'Royal Restaurant',
             'hotel_address': settings['hotel_address'] or '',
-            'hotel_email': settings['hotel_email'] or '',
-            'hotel_phone': settings['hotel_phone'] or '',
+            'hotel_email': settings['owner_email'] or '',
             'hotel_gstn': settings['hotel_gstn'] or '',
             'hotel_food_license': settings['hotel_food_license'] or '',
             'print_name': settings['print_name'] if settings['print_name'] is not None else 1,
             'print_address': settings['print_address'] if settings['print_address'] is not None else 1,
-            'print_email': settings['print_email'] if settings['print_email'] is not None else 1,
-            'print_phone': settings['print_phone'] if settings['print_phone'] is not None else 1,
             'print_gstn': settings['print_gstn'] if settings['print_gstn'] is not None else 1,
             'print_license': settings['print_license'] if settings['print_license'] is not None else 1
         }
