@@ -188,10 +188,12 @@
         }
 
         .orders-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
             gap: 25px;
             animation: fadeIn 0.5s ease;
+            padding-bottom: 20px;
         }
 
         @keyframes fadeIn {
@@ -208,6 +210,8 @@
             transition: all 0.3s;
             position: relative;
             overflow: hidden;
+            min-width: 380px;
+            flex-shrink: 0;
         }
 
         .order-card.completed {
@@ -467,7 +471,6 @@
             }
 
             .orders-grid {
-                grid-template-columns: 1fr;
                 gap: 15px;
             }
         }
