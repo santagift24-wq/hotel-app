@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Sub-Admins - Restaurant Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <style>
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header h1 { color: #333; }
+        .back-btn { background: #6c757d; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; }
+        
+        .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 30px; }
+        
+        .form-card, .list-card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .form-card h2, .list-card h2 { margin-bottom: 20px; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+        .form-group input:focus { outline: none; border-color: #667eea; }
+        
+        .form-group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .form-group-header label { margin: 0; }
+        .select-all-btn { background: #667eea; color: white; padding: 5px 12px; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; }
+        .select-all-btn:hover { background: #5a6fd6; }
+        .count-badge { background: #e9ecef; padding: 2px 8px; border-radius: 12px; font-size: 11px; color: #555; }
+        
+        .checkbox-group { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-height: 200px; overflow-y: auto; padding: 10px; background: #f8f9fa; border-radius: 5px; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; background: white; padding: 8px 10px; border-radius: 3px; border: 1px solid #e0e0e0; }
+        .checkbox-item input { width: auto; cursor: pointer; }
+        .checkbox-item label { margin: 0; cursor: pointer; font-size: 14px; }
+        
+        .btn-submit { width: 100%; background: #667eea; color: white; padding: 12px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+        .btn-submit:hover { background: #5a6fd6; }
+        
+        .subadmin-table { width: 100%; border-collapse: collapse; }
+        .subadmin-table th, .subadmin-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        .subadmin-table th { background: #f8f9fa; font-weight: bold; color: #555; }
+        .subadmin-table th:first-child, .subadmin-table td:first-child { width: 40px; text-align: center; }
+        .subadmin-table input[type="checkbox"] { cursor: pointer; width: 18px; height: 18px; }
+        
+        .status-active { background: #28a745; color: white; padding: 3px 10px; border-radius: 15px; font-size: 12px; }
+        .status-inactive { background: #dc3545; color: white; padding: 3px 10px; border-radius: 15px; font-size: 12px; }
+        
+        .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+        .tag { background: #e9ecef; padding: 2px 8px; border-radius: 3px; font-size: 11px; }
+        .tag-table { background: #d4edda; color: #155724; }
+        .tag-category { background: #cce5ff; color: #004085; }
+        
+        .action-btn { padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; margin-right: 5px; }
+        .btn-toggle { background: #ffc107; color: #333; }
+        .btn-delete { background: #dc3545; color: white; }
+        
+        .no-data { text-align: center; padding: 40px; color: #666; }
+        
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Manage Sub-Admins</h1>
+            <a href="{{ url_for('admin_dashboard') }}" class="back-btn">Back to Dashboard</a>
+        </div>
+        
+        {% if success_message %}
+        <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #28a745;">
+            <strong>✓ Success:</strong> {{ success_message }}
+        </div>
+        {% endif %}
+        
+        {% if error_message %}
+        <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #dc3545;">
+            <strong>✗ Error:</strong> {{ error_message }}
+        </div>
+        {% endif %}
+        
+        <div class="grid">
+            <div class="form-card">
+                <h2>Add New Sub-Admin</h2>
+                <form method="POST">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" name="username" required placeholder="Enter username">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" required placeholder="Enter password">
+                    </div>
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" name="name" required placeholder="Enter full name">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-group-header">
+                            <label>Assign Tables (<span class="count-badge">{{ tables|length }} Available</span>)</label>
+                            <button type="button" class="select-all-btn" onclick="selectAllTables()">Select All</button>
+                        </div>
+                        <div class="checkbox-group" id="tablesGroup">
+                            {% if tables %}
+                                {% for table in tables %}
+                                <div class="checkbox-item">
+                                    <input type="checkbox" name="tables" value="{{ table.id }}" id="table_{{ table.id }}" class="table-checkbox">
+                                    <label for="table_{{ table.id }}">Table {{ table.table_number }}</label>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p style="color: #666; grid-column: 1/-1;">No tables created yet</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="form-group-header">
+                            <label>Assign Categories (<span class="count-badge">{{ categories|length }} Available</span>)</label>
+                            <button type="button" class="select-all-btn" onclick="selectAllCategories()">Select All</button>
+                        </div>
+                        <div class="checkbox-group" id="categoriesGroup">
+                            {% if categories %}
+                                {% for cat in categories %}
+                                <div class="checkbox-item">
+                                    <input type="checkbox" name="categories" value="{{ cat }}" id="cat_{{ loop.index }}" class="category-checkbox">
+                                    <label for="cat_{{ loop.index }}">{{ cat }}</label>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p style="color: #666; grid-column: 1/-1;">No menu categories yet</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-submit">Create Sub-Admin</button>
+                </form>
+            </div>
+            
+            <div class="list-card">
+                <h2>Sub-Admins List</h2>
+                {% if subadmins %}
+                <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+                    <button type="button" class="select-all-btn" onclick="selectAllSubadmins()">Select All</button>
+                    <button type="button" class="select-all-btn" style="background: #dc3545;" onclick="deleteSelectedSubadmins()">Delete Selected</button>
+                </div>
+                <table class="subadmin-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAllCheckbox" onchange="toggleAllCheckboxes()"></th>
+                            <th>Name</th>
+                            <th>Username</th>
+                            <th>Assigned</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sa in subadmins %}
+                        <tr>
+                            <td><input type="checkbox" class="subadmin-checkbox" value="{{ sa.id }}"></td>
+                            <td><strong>{{ sa.name }}</strong></td>
+                            <td>{{ sa.username }}</td>
+                            <td>
+                                <div class="tags">
+                                    {% for t in sa.tables_list %}
+                                        <span class="tag tag-table">Table {{ t }}</span>
+                                    {% endfor %}
+                                    {% for c in sa.categories_list %}
+                                        <span class="tag tag-category">{{ c }}</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if sa.is_active %}
+                                    <span class="status-active">Active</span>
+                                {% else %}
+                                    <span class="status-inactive">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="action-btn btn-toggle" onclick="toggleSubadmin({{ sa.id }})">
+                                    {{ 'Deactivate' if sa.is_active else 'Activate' }}
+                                </button>
+                                <button class="action-btn btn-delete" onclick="deleteSubadmin({{ sa.id }})">Delete</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="no-data">
+                    <p>No sub-admins created yet</p>
+                    <p style="font-size: 14px; color: #999;">Create a sub-admin to delegate order management</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function selectAllTables() {
+            document.querySelectorAll('.table-checkbox').forEach(cb => cb.checked = true);
+        }
+        
+        function selectAllCategories() {
+            document.querySelectorAll('.category-checkbox').forEach(cb => cb.checked = true);
+        }
+        
+        function toggleAllCheckboxes() {
+            const selectAll = document.getElementById('selectAllCheckbox').checked;
+            document.querySelectorAll('.subadmin-checkbox').forEach(cb => cb.checked = selectAll);
+        }
+        
+        function selectAllSubadmins() {
+            document.querySelectorAll('.subadmin-checkbox').forEach(cb => cb.checked = true);
+            document.getElementById('selectAllCheckbox').checked = true;
+        }
+        
+        function deleteSelectedSubadmins() {
+            const selected = document.querySelectorAll('.subadmin-checkbox:checked');
+            if (selected.length === 0) {
+                alert('Please select at least one sub-admin to delete');
+                return;
+            }
+            
+            if (!confirm(`Delete ${selected.length} sub-admin(s)? This action cannot be undone.`)) {
+                return;
+            }
+            
+            // Delete each selected sub-admin
+            Promise.all(Array.from(selected).map(checkbox => 
+                fetch('/admin/subadmin/' + checkbox.value + '/delete', { method: 'POST' })
+                    .then(r => r.json())
+            )).then(results => {
+                if (results.every(r => r.success)) {
+                    location.reload();
+                } else {
+                    alert('Error deleting some sub-admins');
+                }
+            });
+        }
+        
+        function toggleSubadmin(id) {
+            fetch('/admin/subadmin/' + id + '/toggle', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    }
+                });
+        }
+        
+        function deleteSubadmin(id) {
+            if (confirm('Are you sure you want to delete this sub-admin?')) {
+                fetch('/admin/subadmin/' + id + '/delete', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        }
+                    });
+            }
+        }
+    </script>
+</body>
+</html>

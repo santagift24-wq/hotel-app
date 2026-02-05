@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Ordering - Hotel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+        }
+        
+        .admin-link {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+        
+        .admin-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        .table-info {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        
+        .table-info h2 {
+            color: #667eea;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .menu-section {
+            margin-bottom: 30px;
+        }
+        
+        .menu-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 22px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        
+        .menu-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.3s;
+        }
+        
+        .menu-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+        }
+        
+        .menu-card-header {
+            padding: 20px;
+        }
+        
+        .menu-card h3 {
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .menu-card p {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+        
+        .menu-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .price {
+            font-size: 20px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .qty-control {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .qty-control button {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: 600;
+        }
+        
+        .qty-control button:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .qty-control span {
+            min-width: 20px;
+            text-align: center;
+        }
+        
+        .order-summary {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 20px;
+        }
+        
+        .order-summary h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+        
+        .cart-items {
+            margin-bottom: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+        
+        .cart-item-name {
+            color: #333;
+        }
+        
+        .cart-item-price {
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .order-total {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .total-row.final {
+            font-size: 18px;
+            font-weight: 700;
+            color: #667eea;
+            border-top: 2px solid #ddd;
+            padding-top: 10px;
+        }
+        
+        .btn-place-order {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        
+        .btn-place-order:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-place-order:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .empty-cart {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+        }
+        
+        .layout {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        
+        .confirmation-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            display: none;
+            align-items: flex-start;
+            justify-content: center;
+            z-index: 1000;
+            padding-top: 50px;
+            overflow-y: auto;
+        }
+        
+        .confirmation-overlay.show {
+            display: flex;
+        }
+        
+        .confirmation-box {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            max-width: 450px;
+            width: 90%;
+            margin-bottom: 50px;
+        }
+        
+        .confirmation-box h2 {
+            color: #4caf50;
+            font-size: 28px;
+            margin-bottom: 20px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .confirmation-box .tick {
+            font-size: 80px;
+            color: #4caf50;
+            margin-bottom: 20px;
+            animation: bounce 0.6s;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .order-id {
+            font-size: 18px;
+            color: #333;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        
+        .countdown-section {
+            margin: 25px 0;
+            padding: 20px;
+            background: #e3f2fd;
+            border-radius: 10px;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .countdown-timer {
+            font-size: 48px;
+            font-weight: bold;
+            color: #2196F3;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+        }
+        
+        .countdown-text {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .menu-locked {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        
+        .locked-overlay-text {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 30px 50px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 999;
+            display: none;
+            pointer-events: none;
+        }
+        
+        .locked-overlay-text.show {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .order-summary {
+                position: static;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 id="hotelNameHeader">🏨 Restaurant Ordering</h1>
+        <a href="{{ url_for('admin_login') }}" class="admin-link">👨‍💼 Admin Login</a>
+    </div>
+    
+    <div class="container">
+        <div class="table-info">
+            <h2>🪑 Table {{ table_id }}</h2>
+            <p>Welcome! Please select items from below</p>
+        </div>
+        
+        <!-- Confirmation Overlay -->
+        <div class="confirmation-overlay" id="confirmationOverlay">
+            <div class="confirmation-box">
+                <div class="tick">✓</div>
+                <h2>Order Confirmed!</h2>
+                <div class="order-id">Order ID: <span id="confirmedOrderId">#0</span></div>
+                <div class="order-id">Total: <span id="confirmedTotal">₹0.00</span></div>
+                
+                <div class="countdown-section">
+                    <div class="countdown-text">You can modify your order for:</div>
+                    <div class="countdown-timer" id="countdownTimer">3:00</div>
+                    <div class="countdown-text" id="countdownMessage"></div>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button onclick="editOrder()" style="flex: 1; padding: 12px; background: #2196F3; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">✏️ Edit Order</button>
+                    <button onclick="lockOrder()" style="flex: 1; padding: 12px; background: #f44336; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">🔒 Lock Order</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Locked Overlay Message -->
+        <div class="locked-overlay-text" id="lockedOverlay">
+            ⏱️ Order Locked! Changes are no longer allowed.
+        </div>
+        
+        <div class="layout">
+            <div>
+                {% set menu_by_category = {} %}
+                {% for item in menu_items %}
+                    {% if item.category not in menu_by_category %}
+                        {% set _ = menu_by_category.update({item.category: []}) %}
+                    {% endif %}
+                    {% set _ = menu_by_category[item.category].append(item) %}
+                {% endfor %}
+                
+                {% for category in menu_by_category.keys() | sort %}
+                <div class="menu-section">
+                    <h2>{{ category }}</h2>
+                    <div class="menu-grid">
+                        {% for item in menu_by_category[category] %}
+                        <div class="menu-card">
+                            {% if item.image_path %}
+                            <img src="{{ item.image_path }}" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px 8px 0 0;">
+                            {% else %}
+                            <div style="width: 100%; height: 180px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px 8px 0 0; display: flex; align-items: center; justify-content: center; color: white; font-size: 3em;">🍽️</div>
+                            {% endif %}
+                            <div class="menu-card-header">
+                                <h3>{{ item.name }}</h3>
+                                <p>{{ item.description }}</p>
+                            </div>
+                            <div class="menu-card-footer">
+                                <span class="price">₹{{ "%.2f"|format(item.price) }}</span>
+                                <div class="qty-control">
+                                    <button onclick="decreaseQty({{ item.id }})">−</button>
+                                    <span id="qty-{{ item.id }}">0</span>
+                                    <button onclick="increaseQty({{ item.id }}, '{{ item.name }}', {{ item.price }})">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+                
+                {% if not menu_items %}
+                <div class="empty-state" style="text-align: center; padding: 40px; color: #999;">
+                    <p>📭 No menu items available</p>
+                    <p>Please ask the admin to add items</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="order-summary">
+                <h3>🛒 Order Summary</h3>
+                
+                <div class="cart-items" id="cart">
+                    <div class="empty-cart">No items selected</div>
+                </div>
+                
+                <div class="order-total">
+                    <div class="total-row">
+                        <span>Subtotal:</span>
+                        <span id="subtotal">₹0.00</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Tax (18%):</span>
+                        <span id="tax">₹0.00</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Service Charge (5%):</span>
+                        <span id="service">₹0.00</span>
+                    </div>
+                    <div class="total-row final">
+                        <span>TOTAL:</span>
+                        <span id="total">₹0.00</span>
+                    </div>
+                </div>
+                
+                <button class="btn-place-order" id="placeOrderBtn" disabled onclick="placeOrder()">Place Order</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const tableId = {{ table_id }};
+        const cart = {};
+        
+        // Fetch and display hotel name
+        fetch('/api/settings/hotel-name')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('hotelNameHeader').textContent = '👑 ' + data.hotel_name;
+                }
+            })
+            .catch(err => console.log('Hotel name loading skipped'));
+
+        
+        function increaseQty(itemId, itemName, itemPrice) {
+            if (!canModifyOrder && orderConfirmed) {
+                document.getElementById('lockedOverlay').classList.add('show');
+                setTimeout(() => {
+                    document.getElementById('lockedOverlay').classList.remove('show');
+                }, 2000);
+                return;
+            }
+            
+            if (!cart[itemId]) {
+                cart[itemId] = {name: itemName, price: itemPrice, quantity: 0};
+            }
+            cart[itemId].quantity++;
+            document.getElementById('qty-' + itemId).textContent = cart[itemId].quantity;
+            updateCart();
+        }
+        
+        function decreaseQty(itemId) {
+            if (!canModifyOrder && orderConfirmed) {
+                document.getElementById('lockedOverlay').classList.add('show');
+                setTimeout(() => {
+                    document.getElementById('lockedOverlay').classList.remove('show');
+                }, 2000);
+                return;
+            }
+            
+            if (cart[itemId] && cart[itemId].quantity > 0) {
+                cart[itemId].quantity--;
+                document.getElementById('qty-' + itemId).textContent = cart[itemId].quantity;
+                if (cart[itemId].quantity === 0) {
+                    delete cart[itemId];
+                }
+                updateCart();
+            }
+        }
+        
+        function updateCart() {
+            const cartDiv = document.getElementById('cart');
+            const items = Object.values(cart).filter(item => item.quantity > 0);
+            
+            if (items.length === 0) {
+                cartDiv.innerHTML = '<div class="empty-cart">No items selected</div>';
+                document.getElementById('placeOrderBtn').disabled = true;
+                updateTotals(0);
+                return;
+            }
+            
+            let subtotal = 0;
+            let html = '';
+            
+            items.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                subtotal += itemTotal;
+                html += `
+                    <div class="cart-item">
+                        <span class="cart-item-name">${item.name} x${item.quantity}</span>
+                        <span class="cart-item-price">₹${itemTotal.toFixed(2)}</span>
+                    </div>
+                `;
+            });
+            
+            cartDiv.innerHTML = html;
+            document.getElementById('placeOrderBtn').disabled = false;
+            updateTotals(subtotal);
+        }
+        
+        function updateTotals(subtotal) {
+            const tax = subtotal * 0.18;
+            const service = subtotal * 0.05;
+            const total = subtotal + tax + service;
+            
+            document.getElementById('subtotal').textContent = '₹' + subtotal.toFixed(2);
+            document.getElementById('tax').textContent = '₹' + tax.toFixed(2);
+            document.getElementById('service').textContent = '₹' + service.toFixed(2);
+            document.getElementById('total').textContent = '₹' + total.toFixed(2);
+        }
+        
+        let orderConfirmed = false;
+        let confirmedOrderId = null;
+        let countdownTime = 180; // 3 minutes in seconds
+        let countdownInterval = null;
+        let canModifyOrder = false;
+        
+        function editOrder() {
+            // Close confirmation overlay so menu is fully visible
+            document.getElementById('confirmationOverlay').style.display = 'none';
+            
+            // Scroll to menu
+            window.scrollTo(0, 0);
+        }
+        
+        function lockOrder() {
+            // Send order to kitchen
+            if (!orderConfirmed || !confirmedOrderId) {
+                alert('No order to lock');
+                return;
+            }
+            
+            // Stop countdown
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            // Lock and send to kitchen
+            lockAndSendToKitchen();
+            
+            // Clear cart after short delay
+            setTimeout(() => {
+                Object.keys(cart).forEach(key => delete cart[key]);
+                document.querySelectorAll('[id^="qty-"]').forEach(el => el.textContent = '0');
+                document.getElementById('cart').innerHTML = '<div class="empty-cart">No items selected</div>';
+                document.getElementById('subtotal').textContent = '₹0.00';
+                document.getElementById('tax').textContent = '₹0.00';
+                document.getElementById('service').textContent = '₹0.00';
+                document.getElementById('total').textContent = '₹0.00';
+                document.getElementById('placeOrderBtn').disabled = true;
+                document.getElementById('placeOrderBtn').textContent = 'Place Order';
+                
+                // Reset state for new order
+                orderConfirmed = false;
+                canModifyOrder = false;
+                confirmedOrderId = null;
+            }, 2000);
+        }
+        
+        function updateConfirmedOrder() {
+            const items = Object.values(cart).filter(item => item.quantity > 0);
+            
+            if (items.length === 0) {
+                alert('Please select at least one item');
+                return;
+            }
+            
+            if (!orderConfirmed || !confirmedOrderId) {
+                alert('No active order to update');
+                return;
+            }
+            
+            const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const tax = subtotal * 0.18;
+            const service = subtotal * 0.05;
+            const total = subtotal + tax + service;
+            
+            fetch('/api/order/' + confirmedOrderId + '/update', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    items: items,
+                    subtotal: subtotal,
+                    tax: tax,
+                    service_charge: service,
+                    total: total
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Order updated successfully! New Total: ₹' + total.toFixed(2));
+                    document.getElementById('confirmedTotal').textContent = '₹' + total.toFixed(2);
+                    
+                    // Stop countdown
+                    if (countdownInterval) {
+                        clearInterval(countdownInterval);
+                    }
+                    
+                    // Now send to kitchen
+                    lockAndSendToKitchen();
+                    
+                    // Clear cart after short delay
+                    setTimeout(() => {
+                        Object.keys(cart).forEach(key => delete cart[key]);
+                        document.querySelectorAll('[id^="qty-"]').forEach(el => el.textContent = '0');
+                        document.getElementById('cart').innerHTML = '<div class="empty-cart">No items selected</div>';
+                        document.getElementById('subtotal').textContent = '₹0.00';
+                        document.getElementById('tax').textContent = '₹0.00';
+                        document.getElementById('service').textContent = '₹0.00';
+                        document.getElementById('total').textContent = '₹0.00';
+                        document.getElementById('placeOrderBtn').disabled = true;
+                        document.getElementById('placeOrderBtn').textContent = 'Place Order';
+                        
+                        // Reset state for new order
+                        orderConfirmed = false;
+                        canModifyOrder = false;
+                        confirmedOrderId = null;
+                    }, 2000);
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => alert('Error updating order: ' + err));
+        }
+        
+        function startCountdown() {
+            canModifyOrder = true;
+            countdownTime = 180;
+            
+            countdownInterval = setInterval(() => {
+                countdownTime--;
+                
+                const minutes = Math.floor(countdownTime / 60);
+                const seconds = countdownTime % 60;
+                document.getElementById('countdownTimer').textContent = 
+                    minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                
+                if (countdownTime <= 0) {
+                    clearInterval(countdownInterval);
+                    canModifyOrder = false;
+                    lockAndSendToKitchen();
+                }
+            }, 1000);
+        }
+        
+        function lockAndSendToKitchen() {
+            // Hide Edit and Reorder buttons if they exist
+            const buttonsDiv = document.querySelector('[style*="display: flex; gap: 10px"]');
+            if (buttonsDiv) {
+                buttonsDiv.style.display = 'none';
+            }
+            
+            // Update countdown to show "LOCKED"
+            const timerEl = document.getElementById('countdownTimer');
+            if (timerEl) {
+                timerEl.textContent = 'LOCKED';
+            }
+            
+            const messageEl = document.getElementById('countdownMessage');
+            if (messageEl) {
+                messageEl.textContent = 'Your order has been sent to the kitchen';
+            }
+            
+            // Lock the menu
+            const mainLayout = document.getElementById('mainLayout');
+            if (mainLayout) {
+                mainLayout.classList.add('menu-locked');
+            }
+            
+            const btnEl = document.getElementById('placeOrderBtn');
+            if (btnEl) {
+                btnEl.disabled = true;
+            }
+            
+            canModifyOrder = false;
+        }
+        
+        function lockMenu() {
+            const mainLayout = document.getElementById('mainLayout');
+            mainLayout.classList.add('menu-locked');
+            document.getElementById('placeOrderBtn').disabled = true;
+            
+            // Close confirmation overlay when locked
+            if (orderConfirmed) {
+                setTimeout(() => {
+                    document.getElementById('confirmationOverlay').classList.remove('show');
+                    document.getElementById('confirmationOverlay').style.display = 'none';
+                }, 2000);
+            }
+            
+            // Show lock message
+            const lockedOverlay = document.getElementById('lockedOverlay');
+            lockedOverlay.classList.add('show');
+            setTimeout(() => {
+                lockedOverlay.classList.remove('show');
+            }, 3000);
+        }
+        
+        function placeOrder() {
+            // If order is already confirmed, allow updating
+            if (orderConfirmed) {
+                updateConfirmedOrder();
+                return;
+            }
+            
+            const items = Object.values(cart).filter(item => item.quantity > 0);
+            
+            if (items.length === 0) {
+                alert('Please select items');
+                return;
+            }
+            
+            const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const tax = subtotal * 0.18;
+            const service = subtotal * 0.05;
+            const total = subtotal + tax + service;
+            
+            fetch('/api/order/place', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    table_id: tableId,
+                    items: items,
+                    subtotal: subtotal,
+                    tax: tax,
+                    service_charge: service,
+                    total: total
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    orderConfirmed = true;
+                    confirmedOrderId = data.order_id;
+                    
+                    // Show confirmation
+                    document.getElementById('confirmedOrderId').textContent = '#' + data.order_id;
+                    document.getElementById('confirmedTotal').textContent = '₹' + total.toFixed(2);
+                    document.getElementById('confirmationOverlay').classList.add('show');
+                    document.getElementById('confirmationOverlay').style.display = 'flex';
+                    
+                    // Set initial message before countdown starts
+                    document.getElementById('countdownMessage').textContent = 'After this, your order will be locked and sent to kitchen';
+                    
+                    // Start the 3-minute countdown
+                    startCountdown();
+                    
+                    // Change button text
+                    document.getElementById('placeOrderBtn').textContent = 'Update Order';
+                    document.getElementById('placeOrderBtn').disabled = false;
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => alert('Error placing order: ' + err));
+        }
+    </script>
+</body>
+</html>

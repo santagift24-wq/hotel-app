@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Orders - Restaurant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+        }
+        
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .profile-dropdown {
+            position: relative;
+        }
+        
+        .profile-circle {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 18px;
+            color: white;
+            transition: all 0.3s;
+            margin-left: 15px;
+        }
+        
+        .profile-circle:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.6);
+        }
+        
+        .profile-menu {
+            position: absolute;
+            top: 60px;
+            right: 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            min-width: 220px;
+            display: none;
+            z-index: 1000;
+            overflow: hidden;
+        }
+        
+        .profile-menu.active {
+            display: block;
+        }
+        
+        .profile-menu-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .profile-menu-header p {
+            margin: 0;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .profile-menu-header small {
+            display: block;
+            margin-top: 5px;
+            opacity: 0.9;
+            font-size: 12px;
+        }
+        
+        .profile-menu-item {
+            padding: 12px 20px;
+            color: #666;
+            text-decoration: none;
+            display: block;
+            transition: all 0.3s;
+            border-left: 3px solid transparent;
+        }
+        
+        .profile-menu-item:hover {
+            background: #f8f9fa;
+            color: #667eea;
+            border-left-color: #667eea;
+        }
+        
+        .profile-menu-divider {
+            height: 1px;
+            background: #eee;
+            margin: 5px 0;
+        }
+        
+        .profile-menu-logout {
+            padding: 12px 20px;
+            color: #d32f2f;
+            text-decoration: none;
+            display: block;
+            transition: all 0.3s;
+            border-top: 1px solid #eee;
+        }
+        
+        .profile-menu-logout:hover {
+            background: #ffebee;
+        }
+        
+        .container {
+            display: flex;
+            min-height: calc(100vh - 60px);
+        }
+        
+        .sidebar {
+            width: 250px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            padding: 20px 0;
+        }
+        
+        .sidebar h2 {
+            padding: 0 20px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #999;
+            text-transform: uppercase;
+        }
+        
+        .sidebar a {
+            display: block;
+            padding: 12px 20px;
+            color: #666;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .sidebar a.active {
+            background: #f0f4ff;
+            border-left-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .content {
+            flex: 1;
+            padding: 30px;
+        }
+        
+        .content h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .orders-table {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .orders-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .orders-table th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .orders-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .orders-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-confirmed {
+            background: #cfe2ff;
+            color: #084298;
+        }
+        
+        .status-completed {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+        
+        .status-declined {
+            background: #f8d7da;
+            color: #842029;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-buttons button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-accept {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+        
+        .btn-accept:hover {
+            background: #0f5132;
+            color: white;
+        }
+        
+        .btn-decline {
+            background: #f8d7da;
+            color: #842029;
+        }
+        
+        .btn-decline:hover {
+            background: #842029;
+            color: white;
+        }
+        
+        .btn-complete {
+            background: #cfe2ff;
+            color: #084298;
+        }
+        
+        .btn-complete:hover {
+            background: #084298;
+            color: white;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .toggle-switch {
+            display: inline-block;
+            position: relative;
+            width: 50px;
+            height: 28px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-switch label {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 28px;
+        }
+        
+        .toggle-switch label:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        .toggle-switch input:checked + label {
+            background-color: #4CAF50;
+        }
+        
+        .toggle-switch input:checked + label:before {
+            transform: translateX(22px);
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <h1>🏨 Admin - All Orders</h1>
+        <div class="profile-dropdown">
+            <div class="profile-circle" onclick="toggleProfileMenu()">
+                {{ session.admin_username[0]|upper }}
+            </div>
+            <div class="profile-menu" id="profileMenu">
+                <div class="profile-menu-header">
+                    <p>{{ session.admin_username }}</p>
+                    <small>Admin Account</small>
+                </div>
+                <a href="{{ url_for('admin_settings') }}" class="profile-menu-item" onclick="closeProfileMenu()">
+                    ⚙️ Settings
+                </a>
+                <a href="{{ url_for('admin_profile') }}" class="profile-menu-item" onclick="closeProfileMenu()">
+                    🏢 Restaurant Profile
+                </a>
+                <a href="{{ url_for('admin_dashboard') }}" class="profile-menu-item" onclick="closeProfileMenu()">
+                    📊 Dashboard
+                </a>
+                <div class="profile-menu-divider"></div>
+                <a href="{{ url_for('admin_logout') }}" class="profile-menu-logout">
+                    🚪 Logout
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="sidebar">
+            <h2>Menu</h2>
+            <ul>
+                <li><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('admin_tables') }}">Tables & QR</a></li>
+                <li><a href="{{ url_for('admin_menu') }}">Menu</a></li>
+                <li><a href="{{ url_for('admin_orders') }}" class="active">Orders</a></li>
+                <li><a href="{{ url_for('manage_subadmins') }}">Sub-Admins</a></li>
+                <li><a href="/kitchen" style="background: linear-gradient(135deg, #ff6f00 0%, #ffa726 100%); color: white; font-weight: bold;">
+                    <i class="fas fa-utensils"></i> Kitchen Display
+                </a></li>
+            </ul>
+        </div>
+        
+        <div class="content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <h1>All Orders</h1>
+                <div style="display: flex; align-items: center; gap: 30px; background: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <label style="font-weight: 600; color: #333;">Auto Accept Orders:</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="autoAcceptToggle" onchange="toggleAutoAccept()">
+                            <label for="autoAcceptToggle"></label>
+                        </div>
+                        <span id="toggleStatus" style="font-weight: 600; color: #667eea;">Loading...</span>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 15px; border-left: 2px solid #e0e0e0; padding-left: 30px;">
+                        <label style="font-weight: 600; color: #333;">🔔 Order Sound Alerts:</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="soundToggle" onchange="toggleOrderSound()">
+                            <label for="soundToggle"></label>
+                        </div>
+                        <span id="soundStatus" style="font-weight: 600; color: #4CAF50;">ON</span>
+                    </div>
+                </div>
+            </div>
+            
+            {% if orders %}
+            <div class="orders-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Table</th>
+                            <th>Items</th>
+                            <th>Total Amount</th>
+                            <th>Status</th>
+                            <th>Assign To</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td><strong>#{{ order.id }}</strong></td>
+                            <td>Table {{ order.table_number }}</td>
+                            <td>
+                                {% if order.parsed_items %}
+                                    {% for item in order.parsed_items %}
+                                        <div>{{ item.name }} x{{ item.quantity }}</div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div>-</div>
+                                {% endif %}
+                            </td>
+                            <td>Rs {{ "%.2f"|format(order.total) }}</td>
+                            <td>
+                                <span class="status-badge status-{{ order.status }}">
+                                    {{ order.status }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if order.assigned_to %}
+                                    {% set assigned_name = '' %}
+                                    {% for sa in subadmins %}
+                                        {% if sa.id == order.assigned_to %}
+                                            {% set assigned_name = sa.name %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    <div style="margin-bottom: 8px; padding: 8px; background: #d4edda; border-left: 4px solid #28a745; border-radius: 4px; color: #155724; font-weight: 600;">
+                                        ✓ {{ assigned_name or 'Assigned' }}
+                                    </div>
+                                    <select class="assign-select" onchange="assignOrder({{ order.id }}, this.value)" style="padding: 5px; border-radius: 5px; border: 1px solid #ddd; font-size: 12px; width: 100%;">
+                                        <option value="">Change Assignment</option>
+                                        {% for sa in subadmins %}
+                                            <option value="{{ sa.id }}" {% if order.assigned_to == sa.id %}selected{% endif %}>{{ sa.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% else %}
+                                    <select class="assign-select" onchange="assignOrder({{ order.id }}, this.value)" style="padding: 5px; border-radius: 5px; border: 1px solid #ddd; width: 100%;">
+                                        <option value="">-- Assign --</option>
+                                        {% for sa in subadmins %}
+                                            <option value="{{ sa.id }}">{{ sa.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a href="{{ url_for('view_order', order_id=order.id) }}" class="btn-view" style="background: #667eea; color: white; padding: 6px 12px; border-radius: 5px; text-decoration: none; font-size: 12px; margin-right: 5px;">View Details</a>
+                                    {% if order.status == 'pending' %}
+                                        <button class="btn-accept" onclick="acceptOrder({{ order.id }})">Accept</button>
+                                        <button class="btn-decline" onclick="declineOrder({{ order.id }})">Decline</button>
+                                    {% elif order.status == 'confirmed' %}
+                                        <button class="btn-complete" onclick="completeOrder({{ order.id }})">Complete</button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <p>No orders yet</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        // Track which orders have had notification sound played
+        let notifiedOrders = new Set();
+        let soundEnabled = true;
+        
+        // Generate notification sound using Web Audio API
+        function playNotificationSound() {
+            if (!soundEnabled) return;
+            
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create oscillator for the notification sound
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Set up sound parameters (higher pitch for order received)
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch(e) {
+                console.log('Audio notification unavailable:', e);
+            }
+        }
+        
+        // Load sound preference from localStorage
+        function loadSoundPreference() {
+            const pref = localStorage.getItem('orderSoundEnabled');
+            soundEnabled = pref !== 'false'; // Default to true
+            updateSoundToggle();
+        }
+        
+        function updateSoundToggle() {
+            const toggle = document.getElementById('soundToggle');
+            const status = document.getElementById('soundStatus');
+            if (toggle && status) {
+                toggle.checked = soundEnabled;
+                status.textContent = soundEnabled ? '✓ ON' : '✗ OFF';
+                status.style.color = soundEnabled ? '#4CAF50' : '#ff9800';
+            }
+        }
+        
+        function toggleOrderSound() {
+            soundEnabled = !soundEnabled;
+            localStorage.setItem('orderSoundEnabled', soundEnabled);
+            updateSoundToggle();
+            if (soundEnabled) {
+                playNotificationSound(); // Test sound
+            }
+        }
+        
+        function assignOrder(orderId, subadminId) {
+            fetch('/admin/order/' + orderId + '/assign', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({subadmin_id: subadminId ? parseInt(subadminId) : null})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Show brief confirmation
+                    const sel = event.target;
+                    sel.style.background = '#d4edda';
+                    setTimeout(() => sel.style.background = '', 1000);
+                    // Auto-refresh will update the table
+                }
+            });
+        }
+        
+        function acceptOrder(orderId) {
+            if (confirm('Accept this order?')) {
+                fetch('/admin/order/' + orderId + '/accept', {
+                    method: 'POST'
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        // Play notification sound for accepted order
+                        playNotificationSound();
+                        alert('✓ Order accepted!');
+                        // UI will update via auto-refresh (2 seconds)
+                        autoRefreshOrders();
+                    }
+                });
+            }
+        }
+        
+        function declineOrder(orderId) {
+            if (confirm('Decline this order?')) {
+                fetch('/admin/order/' + orderId + '/decline', {
+                    method: 'POST'
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Order declined');
+                        // UI will update via auto-refresh
+                        autoRefreshOrders();
+                    }
+                });
+            }
+        }
+        
+        function completeOrder(orderId) {
+            if (confirm('Mark order as completed?')) {
+                fetch('/admin/order/' + orderId + '/complete', {
+                    method: 'POST'
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✓ Order completed!');
+                        // UI will update via auto-refresh
+                        autoRefreshOrders();
+                    }
+                });
+            }
+        }
+        
+        // Load auto-accept setting
+        function loadAutoAcceptSetting() {
+            fetch('/api/settings/auto-accept')
+            .then(r => r.json())
+            .then(data => {
+                const toggle = document.getElementById('autoAcceptToggle');
+                const status = document.getElementById('toggleStatus');
+                toggle.checked = data.auto_accept === 1;
+                status.textContent = toggle.checked ? '✓ AUTO ACCEPT' : '✗ MANUAL ACCEPT';
+                status.style.color = toggle.checked ? '#4CAF50' : '#ff9800';
+            });
+        }
+        
+        function toggleAutoAccept() {
+            const toggle = document.getElementById('autoAcceptToggle');
+            const status = document.getElementById('toggleStatus');
+            
+            fetch('/api/settings/auto-accept', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({auto_accept: toggle.checked ? 1 : 0})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    status.textContent = toggle.checked ? '✓ AUTO ACCEPT' : '✗ MANUAL ACCEPT';
+                    status.style.color = toggle.checked ? '#4CAF50' : '#ff9800';
+                }
+            });
+        }
+        
+        // Auto-refresh orders every 2 seconds
+        function autoRefreshOrders() {
+            // Fetch all orders via API
+            fetch('/api/orders/all')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.orders) {
+                    // Check for newly confirmed orders (auto-accept or manual accept)
+                    data.orders.forEach(order => {
+                        if ((order.status === 'confirmed' || order.status === 'ready') && !notifiedOrders.has(order.id)) {
+                            // New confirmed/ready order - play sound
+                            notifiedOrders.add(order.id);
+                            playNotificationSound();
+                        }
+                    });
+                    updateOrdersTable(data.orders);
+                }
+            })
+            .catch(err => console.log('Auto-refresh error:', err));
+        }
+        
+        function updateOrdersTable(orders) {
+            const tableBody = document.querySelector('table tbody');
+            if (!tableBody) return;
+            
+            // Clear existing rows
+            tableBody.innerHTML = '';
+            
+            // Add fresh orders
+            orders.forEach(order => {
+                const itemsHTML = order.items_display || 'No items';
+                const statusClass = order.status === 'confirmed' ? 'status-confirmed' : 
+                                   order.status === 'pending' ? 'status-pending' : 'status-other';
+                
+                let actionButtons = '';
+                let viewDetailsButton = '';
+                
+                if (order.status === 'pending') {
+                    actionButtons = `
+                        <button onclick="acceptOrder(${order.id})" class="btn btn-accept">Accept</button>
+                        <button onclick="declineOrder(${order.id})" class="btn btn-decline">Decline</button>
+                    `;
+                } else if (order.status === 'confirmed') {
+                    actionButtons = `<button onclick="completeOrder(${order.id})" class="btn btn-complete">Complete</button>`;
+                } else if (order.status === 'completed') {
+                    // Show View Details only for completed orders
+                    viewDetailsButton = `<a href="/admin/order/${order.id}/view" class="btn btn-view">View Details</a>`;
+                }
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>#${order.id}</td>
+                    <td>Table ${order.table_number}</td>
+                    <td>${itemsHTML}</td>
+                    <td>Rs ${order.total.toFixed(2)}</td>
+                    <td><span class="${statusClass}">${order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span></td>
+                    <td>
+                        <select onchange="assignOrder(${order.id}, this.value)">
+                            <option value="">-- Assign --</option>
+                        </select>
+                    </td>
+                    <td>
+                        ${viewDetailsButton}
+                        ${actionButtons}
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+            
+            // If no orders, show empty state
+            if (orders.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = '<td colspan="7" style="text-align: center; padding: 30px; color: #999;">No orders yet</td>';
+                tableBody.appendChild(emptyRow);
+            }
+        }
+        
+        // Load on page load
+        loadAutoAcceptSetting();
+        loadSoundPreference();
+        
+        // Start auto-refresh (update every 2 seconds)
+        setInterval(autoRefreshOrders, 2000);
+        
+        // Also do initial load
+        autoRefreshOrders();
+        
+        // Profile dropdown menu functions
+        function toggleProfileMenu() {
+            const menu = document.getElementById('profileMenu');
+            menu.classList.toggle('active');
+        }
+        
+        function closeProfileMenu() {
+            const menu = document.getElementById('profileMenu');
+            menu.classList.remove('active');
+        }
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const profileDropdown = document.querySelector('.profile-dropdown');
+            if (profileDropdown && !profileDropdown.contains(event.target)) {
+                closeProfileMenu();
+            }
+        });
+    </script>
+</body>
+</html>

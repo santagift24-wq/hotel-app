@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sub-Admin Dashboard - Restaurant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f6fa; }
+        
+        .navbar { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 15px 30px; color: white; display: flex; justify-content: space-between; align-items: center; }
+        .navbar h1 { font-size: 24px; }
+        .navbar-right { display: flex; align-items: center; gap: 20px; }
+        .user-info { background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 20px; }
+        .logout-btn { background: white; color: #11998e; padding: 8px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; }
+        
+        .container { max-width: 1400px; margin: 0 auto; padding: 30px; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+        .stat-card h3 { font-size: 36px; margin-bottom: 5px; }
+        .stat-card p { color: #666; font-size: 14px; }
+        .stat-card.total h3 { color: #667eea; }
+        .stat-card.pending h3 { color: #ffc107; }
+        .stat-card.confirmed h3 { color: #17a2b8; }
+        .stat-card.completed h3 { color: #28a745; }
+        
+        .orders-section { background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 25px; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #11998e; padding-bottom: 10px; }
+        .section-header h2 { color: #333; }
+        
+        .orders-table { width: 100%; border-collapse: collapse; }
+        .orders-table th, .orders-table td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
+        .orders-table th { background: #f8f9fa; font-weight: bold; color: #555; }
+        .orders-table tr:hover { background: #f8f9fa; }
+        
+        .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-confirmed { background: #cce5ff; color: #004085; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-declined { background: #f8d7da; color: #721c24; }
+        
+        .items-preview { max-width: 200px; }
+        .item-tag { display: inline-block; background: #e9ecef; padding: 2px 8px; border-radius: 3px; font-size: 11px; margin: 2px; }
+        
+        .action-buttons { display: flex; gap: 5px; }
+        .btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .btn-accept { background: #28a745; color: white; }
+        .btn-decline { background: #dc3545; color: white; }
+        .btn-complete { background: #17a2b8; color: white; }
+        .btn-view { background: #667eea; color: white; text-decoration: none; display: inline-block; }
+        
+        .no-orders { text-align: center; padding: 60px; color: #666; }
+        .no-orders p { font-size: 18px; margin-bottom: 10px; }
+        
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .navbar { flex-direction: column; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>Sub-Admin Panel</h1>
+        <div class="navbar-right">
+            <span class="user-info">Welcome, {{ session.subadmin_name }}</span>
+            <a href="{{ url_for('kitchen_display') }}" class="logout-btn" style="background: #d32f2f; color: white;">Kitchen Display</a>
+            <a href="{{ url_for('subadmin_orders') }}" class="logout-btn" style="background: rgba(255,255,255,0.2); color: white;">My Orders</a>
+            <a href="{{ url_for('admin_logout') }}" class="logout-btn">Logout</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <h3>{{ stats.total }}</h3>
+                <p>Total Orders</p>
+            </div>
+            <div class="stat-card pending">
+                <h3>{{ stats.pending }}</h3>
+                <p>Pending</p>
+            </div>
+            <div class="stat-card confirmed">
+                <h3>{{ stats.confirmed }}</h3>
+                <p>Confirmed</p>
+            </div>
+            <div class="stat-card completed">
+                <h3>{{ stats.completed }}</h3>
+                <p>Completed</p>
+            </div>
+        </div>
+        
+        <div class="orders-section">
+            <div class="section-header">
+                <h2>Your Assigned Orders</h2>
+            </div>
+            
+            {% if orders %}
+            <table class="orders-table">
+                <thead>
+                    <tr>
+                        <th>Order #</th>
+                        <th>Table</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Source</th>
+                        <th>Time</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td><strong>#{{ order.id }}</strong></td>
+                        <td>Table {{ order.table_number }}</td>
+                        <td class="items-preview">
+                            {% for item in order.parsed_items[:3] %}
+                                <span class="item-tag">{{ item.name }} x{{ item.quantity }}</span>
+                            {% endfor %}
+                            {% if order.parsed_items|length > 3 %}
+                                <span class="item-tag">+{{ order.parsed_items|length - 3 }} more</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>Rs {{ "%.2f"|format(order.total) }}</strong></td>
+                        <td>
+                            <span class="status-badge status-{{ order.status }}">{{ order.status }}</span>
+                        </td>
+                        <td>
+                            {% if order.assigned_by_admin %}
+                                <span style="background: #667eea; color: white; padding: 3px 8px; border-radius: 10px; font-size: 11px;">Assigned by Admin</span>
+                            {% else %}
+                                <span style="background: #28a745; color: white; padding: 3px 8px; border-radius: 10px; font-size: 11px;">My Table</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ order.created_at }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{{ url_for('view_order', order_id=order.id) }}" class="btn btn-view">View</a>
+                                {% if order.status == 'pending' %}
+                                    <button class="btn btn-accept" onclick="acceptOrder({{ order.id }})">Accept</button>
+                                    <button class="btn btn-decline" onclick="declineOrder({{ order.id }})">Decline</button>
+                                {% elif order.status == 'confirmed' %}
+                                    <button class="btn btn-complete" onclick="completeOrder({{ order.id }})">Complete</button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-orders">
+                <p>No orders assigned to you yet</p>
+                <p style="font-size: 14px; color: #999;">Orders from your assigned tables will appear here</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        function acceptOrder(id) {
+            fetch('/admin/order/' + id + '/accept', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) location.reload();
+                });
+        }
+        
+        function declineOrder(id) {
+            if (confirm('Decline this order?')) {
+                fetch('/admin/order/' + id + '/decline', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) location.reload();
+                    });
+            }
+        }
+        
+        function completeOrder(id) {
+            fetch('/admin/order/' + id + '/complete', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) location.reload();
+                });
+        }
+    </script>
+</body>
+</html>

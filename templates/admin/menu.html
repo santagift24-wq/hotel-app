@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu - Restaurant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+        }
+        
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .profile-dropdown {
+            position: relative;
+        }
+        
+        .profile-circle {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 18px;
+            color: white;
+            transition: all 0.3s;
+            margin-left: 15px;
+        }
+        
+        .profile-circle:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.6);
+        }
+        
+        .profile-menu {
+            position: absolute;
+            top: 60px;
+            right: 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            min-width: 220px;
+            display: none;
+            z-index: 1000;
+            overflow: hidden;
+        }
+        
+        .profile-menu.active {
+            display: block;
+        }
+        
+        .profile-menu-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .profile-menu-header p {
+            margin: 0;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .profile-menu-header small {
+            display: block;
+            margin-top: 5px;
+            opacity: 0.9;
+            font-size: 12px;
+        }
+        
+        .profile-menu-item {
+            padding: 12px 20px;
+            color: #666;
+            text-decoration: none;
+            display: block;
+            transition: all 0.3s;
+            border-left: 3px solid transparent;
+        }
+        
+        .profile-menu-item:hover {
+            background: #f8f9fa;
+            color: #667eea;
+            border-left-color: #667eea;
+        }
+        
+        .profile-menu-divider {
+            height: 1px;
+            background: #eee;
+            margin: 5px 0;
+        }
+        
+        .profile-menu-logout {
+            padding: 12px 20px;
+            color: #d32f2f;
+            text-decoration: none;
+            display: block;
+            transition: all 0.3s;
+            border-top: 1px solid #eee;
+        }
+        
+        .profile-menu-logout:hover {
+            background: #ffebee;
+        }
+        
+        .container {
+            display: flex;
+            min-height: calc(100vh - 60px);
+        }
+        
+        .sidebar {
+            width: 250px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            padding: 20px 0;
+        }
+        
+        .sidebar h2 {
+            padding: 0 20px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #999;
+            text-transform: uppercase;
+        }
+        
+        .sidebar a {
+            display: block;
+            padding: 12px 20px;
+            color: #666;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .sidebar a.active {
+            background: #f0f4ff;
+            border-left-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .content {
+            flex: 1;
+            padding: 30px;
+        }
+        
+        .content h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .form-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .form-section h2 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        
+        .btn-submit {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .btn-submit:hover {
+            background: #764ba2;
+        }
+        
+        .menu-table {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .menu-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .menu-table th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .menu-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .menu-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .menu-table td:last-child {
+            text-align: center;
+        }
+        
+        .btn-delete {
+            background: #f8d7da;
+            color: #842029;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .btn-delete:hover {
+            background: #842029;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <h1>🏨 Admin - Menu</h1>
+        <div class="profile-dropdown">
+            <div class="profile-circle" onclick="toggleProfileMenu()">
+                {{ session.admin_username[0]|upper }}
+            </div>
+            <div class="profile-menu" id="profileMenu">
+                <div class="profile-menu-header">
+                    <p>{{ session.admin_username }}</p>
+                    <small>Admin Account</small>
+                </div>
+                <a href="{{ url_for('admin_settings') }}" class="profile-menu-item" onclick="closeProfileMenu()">
+                    ⚙️ Settings
+                </a>
+                <a href="{{ url_for('admin_profile') }}" class="profile-menu-item" onclick="closeProfileMenu()">
+                    🏢 Restaurant Profile
+                </a>
+                <a href="{{ url_for('admin_dashboard') }}" class="profile-menu-item" onclick="closeProfileMenu()">
+                    📊 Dashboard
+                </a>
+                <div class="profile-menu-divider"></div>
+                <a href="{{ url_for('admin_logout') }}" class="profile-menu-logout">
+                    🚪 Logout
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="sidebar">
+            <h2>Menu</h2>
+            <ul>
+                <li><a href="{{ url_for('admin_dashboard') }}">📊 Dashboard</a></li>
+                <li><a href="{{ url_for('admin_tables') }}">🪑 Tables & QR</a></li>
+                <li><a href="{{ url_for('admin_menu') }}" class="active">🍽️ Menu</a></li>
+                <li><a href="{{ url_for('admin_orders') }}">📦 Orders</a></li>
+            </ul>
+        </div>
+        
+        <div class="content">
+            <h1>Menu Management</h1>
+            
+            <div class="form-section">
+                <h2>➕ Add Menu Item</h2>
+                <form method="POST" action="{{ url_for('admin_menu') }}" enctype="multipart/form-data">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Item Name</label>
+                            <input type="text" name="name" placeholder="e.g., Biryani" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select name="category" required>
+                                <option value="">Select Category</option>
+                                <option value="Appetizer">🥗 Appetizer</option>
+                                <option value="Main Course">🍛 Main Course</option>
+                                <option value="Dessert">🍰 Dessert</option>
+                                <option value="Beverage">🥤 Beverage</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Price (₹)</label>
+                            <input type="number" name="price" placeholder="e.g., 250" required min="1" step="0.01">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea name="description" placeholder="Item description" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Dish Image</label>
+                        <input type="file" name="image" accept="image/*" placeholder="Upload dish image">
+                        <small style="color: #666;">Optional: PNG, JPG, or GIF (Max 5MB)</small>
+                    </div>
+                    <button type="submit" class="btn-submit">Add Item</button>
+                </form>
+            </div>
+            
+            <h2 style="margin-top: 30px; margin-bottom: 20px;">Menu Items</h2>
+            <div class="menu-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Item Name</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>Description</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in menu_items %}
+                        <tr>
+                            <td>
+                                {% if item.image_path %}
+                                    <img src="{{ item.image_path }}" style="width: 40px; height: 40px; border-radius: 5px; object-fit: cover;">
+                                {% else %}
+                                    <span style="color: #999;">No image</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ item.name }}</strong></td>
+                            <td>{{ item.category }}</td>
+                            <td><strong>₹{{ "%.2f"|format(item.price) }}</strong></td>
+                            <td>{{ item.description }}</td>
+                            <td>
+                                <button class="btn-delete" onclick="deleteItem({{ item.id }})">🗑️ Delete</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if not menu_items %}
+            <div style="text-align: center; padding: 40px; color: #999;">
+                <p>No menu items added yet</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        function deleteItem(itemId) {
+            if (confirm('Delete this item?')) {
+                fetch('/admin/menu/delete/' + itemId, {
+                    method: 'POST'
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Item deleted');
+                        location.reload();
+                    }
+                });
+            }
+        }
+        
+        // Profile dropdown menu functions
+        function toggleProfileMenu() {
+            const menu = document.getElementById('profileMenu');
+            menu.classList.toggle('active');
+        }
+        
+        function closeProfileMenu() {
+            const menu = document.getElementById('profileMenu');
+            menu.classList.remove('active');
+        }
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const profileDropdown = document.querySelector('.profile-dropdown');
+            if (profileDropdown && !profileDropdown.contains(event.target)) {
+                closeProfileMenu();
+            }
+        });
+    </script>
+</body>
+</html>

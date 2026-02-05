@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Orders - Restaurant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+        }
+        
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .container {
+            display: flex;
+            min-height: calc(100vh - 60px);
+        }
+        
+        .sidebar {
+            width: 250px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            padding: 20px 0;
+        }
+        
+        .sidebar h2 {
+            padding: 0 20px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #999;
+            text-transform: uppercase;
+        }
+        
+        .sidebar a {
+            display: block;
+            padding: 12px 20px;
+            color: #666;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .sidebar a.active {
+            background: #f0f4ff;
+            border-left-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .content {
+            flex: 1;
+            padding: 30px;
+        }
+        
+        .content h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .orders-table {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .orders-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .orders-table th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .orders-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .orders-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-confirmed {
+            background: #cfe2ff;
+            color: #084298;
+        }
+        
+        .status-completed {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+        
+        .status-declined {
+            background: #f8d7da;
+            color: #842029;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-buttons button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-accept {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+        
+        .btn-accept:hover {
+            background: #0f5132;
+            color: white;
+        }
+        
+        .btn-decline {
+            background: #f8d7da;
+            color: #842029;
+        }
+        
+        .btn-decline:hover {
+            background: #842029;
+            color: white;
+        }
+        
+        .btn-complete {
+            background: #cfe2ff;
+            color: #084298;
+        }
+        
+        .btn-complete:hover {
+            background: #084298;
+            color: white;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <h1>🏨 Admin - All Orders</h1>
+        <a href="{{ url_for('admin_logout') }}" class="logout-btn">Logout</a>
+    </div>
+    
+    <div class="container">
+        <div class="sidebar">
+            <h2>Menu</h2>
+            <ul>
+                <li><a href="{{ url_for('admin_dashboard') }}">📊 Dashboard</a></li>
+                <li><a href="{{ url_for('admin_tables') }}">🪑 Tables & QR</a></li>
+                <li><a href="{{ url_for('admin_menu') }}">🍽️ Menu</a></li>
+                <li><a href="{{ url_for('admin_orders') }}" class="active">📦 Orders</a></li>
+            </ul>
+        </div>
+        
+        <div class="content">
+            <h1>All Orders</h1>
+            
+            {% if orders %}
+            <div class="orders-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Table</th>
+                            <th>Items</th>
+                            <th>Total Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td><strong>#{{ order.id }}</strong></td>
+                            <td>Table {{ order.table_number }}</td>
+                            <td>
+                                {% set items = order.items|from_json if order.items is string else order.items %}
+                                {% for item in items %}
+                                    <div>{{ item.name }} x{{ item.quantity }}</div>
+                                {% endfor %}
+                            </td>
+                            <td>₹{{ "%.2f"|format(order.total) }}</td>
+                            <td>
+                                <span class="status-badge status-{{ order.status }}">
+                                    {{ order.status }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if order.status == 'pending' %}
+                                    <div class="action-buttons">
+                                        <button class="btn-accept" onclick="acceptOrder({{ order.id }})">✓ Accept</button>
+                                        <button class="btn-decline" onclick="declineOrder({{ order.id }})">✗ Decline</button>
+                                    </div>
+                                {% elif order.status == 'confirmed' %}
+                                    <div class="action-buttons">
+                                        <button class="btn-complete" onclick="completeOrder({{ order.id }})">✓ Complete</button>
+                                    </div>
+                                {% else %}
+                                    <span class="status-badge status-{{ order.status }}">{{ order.status|upper }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <p>📭 No orders yet</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        function acceptOrder(orderId) {
+            if (confirm('Accept this order?')) {
+                fetch('/admin/order/' + orderId + '/accept', {
+                    method: 'POST'
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✓ Order accepted!');
+                        location.reload();
+                    }
+                });
+            }
+        }
+        
+        function declineOrder(orderId) {
+            if (confirm('Decline this order?')) {
+                fetch('/admin/order/' + orderId + '/decline', {
+                    method: 'POST'
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Order declined');
+                        location.reload();
+                    }
+                });
+            }
+        }
+        
+        function completeOrder(orderId) {
+            if (confirm('Mark order as completed?')) {
+                fetch('/admin/order/' + orderId + '/complete', {
+                    method: 'POST'
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✓ Order completed!');
+                        location.reload();
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

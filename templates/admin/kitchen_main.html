@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Display System - Main</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: white;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #d32f2f 0%, #ff6f00 100%);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .navbar h1 {
+            font-size: 32px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 30px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 12px 20px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.9;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .timer {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .logout-btn {
+            background: white;
+            color: #d32f2f;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .sound-control {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 18px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .sound-control label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .toggle-switch {
+            display: inline-block;
+            position: relative;
+            width: 45px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-switch label {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.3);
+            transition: .3s;
+            border-radius: 24px;
+            margin: 0;
+            text-transform: none;
+            letter-spacing: normal;
+        }
+
+        .toggle-switch label:before {
+            content: '';
+            position: absolute;
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + label {
+            background-color: #4CAF50;
+        }
+
+        .toggle-switch input:checked + label:before {
+            transform: translateX(21px);
+        }
+
+        .sound-status {
+            font-size: 12px;
+            font-weight: bold;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 30px;
+            min-height: calc(100vh - 100px);
+        }
+
+        .orders-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 25px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .order-card {
+            background: linear-gradient(135deg, #1e2749 0%, #2c3e50 100%);
+            border-left: 6px solid #ff6f00;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .order-card.completed {
+            border-left-color: #4caf50;
+            opacity: 0.7;
+        }
+
+        .order-card.ready {
+            border-left-color: #2196f3;
+        }
+
+        .order-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .order-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 111, 0, 0.1) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid rgba(255, 111, 0, 0.3);
+            padding-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .order-id {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff6f00;
+        }
+
+        .order-status {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status-confirmed {
+            background: linear-gradient(135deg, #ff6f00 0%, #ffa726 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(255, 111, 0, 0.3);
+        }
+
+        .status-ready {
+            background: linear-gradient(135deg, #2196f3 0%, #42a5f5 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+        }
+
+        .status-completed {
+            background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+            color: white;
+        }
+
+        .table-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #64b5f6;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .table-info i {
+            font-size: 16px;
+        }
+
+        .order-items {
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid #64b5f6;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .item-name {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .item-qty {
+            background: linear-gradient(135deg, #ff6f00 0%, #ffa726 100%);
+            color: white;
+            min-width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            margin-left: 12px;
+        }
+
+        .order-time {
+            font-size: 12px;
+            color: #90caf9;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .order-total {
+            background: rgba(255, 111, 0, 0.15);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            color: #ffa726;
+            font-size: 16px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-ready {
+            background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-ready:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-problem {
+            background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+        }
+
+        .btn-problem:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(244, 67, 54, 0.4);
+        }
+
+        .btn-complete {
+            background: linear-gradient(135deg, #64b5f6 0%, #42a5f5 100%);
+            color: white;
+            font-size: 12px;
+        }
+
+        .btn-complete:hover {
+            transform: translateY(-2px);
+        }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            color: #90caf9;
+        }
+
+        .empty-icon {
+            font-size: 80px;
+            opacity: 0.3;
+            margin-bottom: 20px;
+        }
+
+        .empty-text {
+            font-size: 24px;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px 20px;
+            }
+
+            .navbar h1 {
+                font-size: 24px;
+            }
+
+            .navbar-right {
+                gap: 15px;
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .stats {
+                gap: 15px;
+                font-size: 12px;
+            }
+
+            .container {
+                padding: 15px;
+            }
+
+            .orders-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="navbar-left">
+            <h1>
+                <i class="fas fa-utensils"></i> KITCHEN DISPLAY
+            </h1>
+        </div>
+        <div class="navbar-right">
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">Orders Ready</span>
+                    <span class="stat-value" id="readyCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">In Progress</span>
+                    <span class="stat-value" id="progressCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Completed</span>
+                    <span class="stat-value" id="completedCount">0</span>
+                </div>
+            </div>
+            <div class="timer" id="timer">Updating...</div>
+            <div class="sound-control">
+                <i class="fas fa-volume-up"></i>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="soundToggle" checked onchange="toggleKitchenSound()">
+                    <label for="soundToggle"></label>
+                </div>
+                <span class="sound-status" id="soundStatus">ON</span>
+            </div>
+            <a href="/admin/logout" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="orders-grid" id="ordersGrid">
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <div class="empty-text">No orders to prepare</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let countdownInterval = null;
+        let refreshInterval = null;
+        let secondsUntilRefresh = 10;
+        let lastOrderCount = 0;
+        let kitchenSoundEnabled = true;
+
+        // Load sound preference from localStorage
+        function loadKitchenSoundPreference() {
+            const saved = localStorage.getItem('kitchenSoundEnabled');
+            kitchenSoundEnabled = saved !== 'false'; // Default to true
+            const toggle = document.getElementById('soundToggle');
+            const status = document.getElementById('soundStatus');
+            if (toggle) {
+                toggle.checked = kitchenSoundEnabled;
+                if (status) {
+                    status.textContent = kitchenSoundEnabled ? '✓ ON' : '✗ OFF';
+                    status.style.color = kitchenSoundEnabled ? '#4CAF50' : '#ff9800';
+                }
+            }
+        }
+
+        // Toggle kitchen sound
+        function toggleKitchenSound() {
+            kitchenSoundEnabled = !kitchenSoundEnabled;
+            localStorage.setItem('kitchenSoundEnabled', kitchenSoundEnabled);
+            const status = document.getElementById('soundStatus');
+            if (status) {
+                status.textContent = kitchenSoundEnabled ? '✓ ON' : '✗ OFF';
+                status.style.color = kitchenSoundEnabled ? '#4CAF50' : '#ff9800';
+            }
+            if (kitchenSoundEnabled) {
+                playNewOrderSound(); // Test the sound
+            }
+        }
+
+        // Play sound for new order - Text to speech saying "New order received"
+        function playNewOrderSound() {
+            if (!kitchenSoundEnabled) return; // Check if sound is enabled
+            
+            // First, play a beep sound using Web Audio API
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create oscillator for beep
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Set volume
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                // Create beep pattern (alert sound)
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.15);
+                oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.35);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch (e) {
+                console.log('Audio context not available');
+            }
+            
+            // Speak message using speech synthesis
+            if ('speechSynthesis' in window && kitchenSoundEnabled) {
+                // Cancel any previous speech
+                speechSynthesis.cancel();
+                
+                const utterance = new SpeechSynthesisUtterance('New order received');
+                utterance.rate = 1.0;
+                utterance.pitch = 1;
+                utterance.volume = 1;
+                
+                // Log speech events
+                utterance.onstart = function() {
+                    console.log('Speech started');
+                };
+                
+                speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Format time
+        function formatTime(timestamp) {
+            const date = new Date(timestamp.replace(' ', 'T'));
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            const hours = Math.floor(diffMins / 60);
+            return `${hours}h ago`;
+        }
+
+        // Fetch orders
+        async function fetchOrders() {
+            try {
+                const response = await fetch('/api/kitchen/orders');
+                const data = await response.json();
+
+                if (data.success) {
+                    // Check if there are new orders and play sound
+                    const currentOrderCount = data.orders.filter(o => o.status === 'confirmed').length;
+                    if (currentOrderCount > lastOrderCount) {
+                        console.log('New orders detected! Playing alert sound.');
+                        playNewOrderSound();
+                    }
+                    lastOrderCount = currentOrderCount;
+                    
+                    displayOrders(data.orders);
+                    resetCountdown();
+                }
+            } catch (error) {
+                console.error('Error fetching orders:', error);
+            }
+        }
+
+        // Display orders
+        function displayOrders(orders) {
+            const grid = document.getElementById('ordersGrid');
+
+            if (orders.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-inbox"></i>
+                        </div>
+                        <div class="empty-text">No orders to prepare</div>
+                    </div>
+                `;
+                updateStats(0, 0, 0);
+                return;
+            }
+
+            let html = '';
+            let readyCount = 0;
+            let progressCount = 0;
+            let completedCount = 0;
+
+            orders.forEach(order => {
+                const status = order.status;
+                const isCompleted = status === 'completed';
+                const isReady = status === 'ready';
+                const isConfirmed = status === 'confirmed';
+
+                if (isConfirmed) progressCount++;
+                if (isReady) readyCount++;
+                if (isCompleted) completedCount++;
+
+                const statusClass = isCompleted ? 'completed' : (isReady ? 'ready' : 'confirmed');
+                const statusText = isCompleted ? 'COMPLETED' : (isReady ? 'READY' : 'CONFIRMED');
+                const statusBadge = isCompleted ? 'status-completed' : (isReady ? 'status-ready' : 'status-confirmed');
+
+                let itemsHtml = '';
+                if (order.parsed_items && order.parsed_items.length > 0) {
+                    itemsHtml = order.parsed_items.map(item =>
+                        `<div class="item">
+                            <span class="item-name">${item.name || 'Unknown Item'}</span>
+                            <span class="item-qty">${item.quantity || 1}</span>
+                        </div>`
+                    ).join('');
+                }
+
+                html += `
+                    <div class="order-card ${statusClass}">
+                        <div class="card-header">
+                            <div class="order-id">#${order.id}</div>
+                            <span class="order-status ${statusBadge}">${statusText}</span>
+                        </div>
+
+                        ${order.table_number ? `<div class="table-info">
+                            <i class="fas fa-chair"></i> Table ${order.table_number}
+                        </div>` : ''}
+
+                        <div class="order-time">
+                            <i class="fas fa-clock"></i> ${formatTime(order.created_at)}
+                        </div>
+
+                        <div class="order-items">
+                            <div class="item-list">
+                                ${itemsHtml}
+                            </div>
+                        </div>
+
+                        ${order.total ? `<div class="order-total">
+                            <div class="total-row">
+                                <span>Total:</span>
+                                <span>₹${parseFloat(order.total).toFixed(2)}</span>
+                            </div>
+                        </div>` : ''}
+
+                        ${isConfirmed ? `<div class="actions">
+                            <button class="action-btn btn-ready" onclick="markOrderReady(${order.id})">
+                                <i class="fas fa-check-circle"></i> MARK READY
+                            </button>
+                            <button class="action-btn btn-problem" onclick="reportProblem(${order.id})">
+                                <i class="fas fa-exclamation-triangle"></i> PROBLEM
+                            </button>
+                        </div>` : isReady ? `<div class="actions">
+                            <button class="action-btn btn-complete" onclick="completeOrder(${order.id})">
+                                <i class="fas fa-check"></i> COMPLETED
+                            </button>
+                            <button class="action-btn btn-problem" onclick="reportProblem(${order.id})">
+                                <i class="fas fa-exclamation-triangle"></i> PROBLEM
+                            </button>
+                        </div>` : `<div class="actions">
+                            <button class="action-btn btn-complete" onclick="alert('Order already completed')">
+                                <i class="fas fa-check-double"></i> FINISHED
+                            </button>
+                        </div>`}
+                    </div>
+                `;
+            });
+
+            grid.innerHTML = html;
+            updateStats(readyCount, progressCount, completedCount);
+        }
+
+        // Update stats
+        function updateStats(ready, progress, completed) {
+            document.getElementById('readyCount').textContent = ready;
+            document.getElementById('progressCount').textContent = progress;
+            document.getElementById('completedCount').textContent = completed;
+        }
+
+        // Complete order
+        async function markOrderReady(orderId) {
+            if (confirm('Mark order #' + orderId + ' as READY for serving?')) {
+                try {
+                    const response = await fetch(`/kitchen/order/${orderId}/ready`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        fetchOrders();
+                    }
+                } catch (error) {
+                    alert('Error marking order as ready: ' + error);
+                }
+            }
+        }
+
+        async function completeOrder(orderId) {
+            if (confirm('Mark order #' + orderId + ' as COMPLETED (delivered to customer)?')) {
+                try {
+                    const response = await fetch(`/admin/order/${orderId}/complete`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        fetchOrders();
+                    }
+                } catch (error) {
+                    alert('Error completing order: ' + error);
+                }
+            }
+        }
+
+        // Report problem
+        function reportProblem(orderId) {
+            const reason = prompt('Please describe the problem:');
+            if (reason) {
+                alert('Problem reported for order #' + orderId + ':\n' + reason + '\n\nNotifying admin...');
+                // In a real system, this would save to database
+            }
+        }
+
+        // Countdown timer
+        function startCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+
+            countdownInterval = setInterval(() => {
+                secondsUntilRefresh--;
+                document.getElementById('timer').textContent = `${secondsUntilRefresh}s`;
+
+                if (secondsUntilRefresh <= 0) {
+                    fetchOrders();
+                }
+            }, 1000);
+        }
+
+        function resetCountdown() {
+            secondsUntilRefresh = 10;
+            document.getElementById('timer').textContent = '10s';
+            startCountdown();
+        }
+
+        // Initial fetch and setup
+        loadKitchenSoundPreference();
+        fetchOrders();
+        startCountdown();
+    </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Approvals - Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏨 Admin</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-item">📊 Dashboard</a>
+                <a href="{{ url_for('admin_tables') }}" class="nav-item">🪑 Tables & QR</a>
+                <a href="{{ url_for('admin_menu') }}" class="nav-item">🍽️ Menu</a>
+                <a href="{{ url_for('admin_approvals') }}" class="nav-item active">✅ Approvals</a>
+                <a href="{{ url_for('admin_billing') }}" class="nav-item">💳 Billing</a>
+                <a href="{{ url_for('admin_analytics') }}" class="nav-item">📈 Analytics</a>
+                <a href="{{ url_for('admin_profile') }}" class="nav-item">👤 Profile</a>
+                <a href="{{ url_for('admin_logout') }}" class="nav-item logout">🚪 Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="top-bar">
+                <div>
+                    <h2 style="margin: 0;">Order Approvals</h2>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="approvals-grid">
+                    <!-- Pre-Orders -->
+                    <div class="approval-section">
+                        <h2>📅 Pre-Orders ({{ pre_orders|length }})</h2>
+                        <div class="requests-list">
+                            {% for order in pre_orders %}
+                            <div class="request-item">
+                                <div class="request-header">
+                                    <strong>{{ order.customer_id }}</strong>
+                                    <span class="badge badge-pre_order">PRE-ORDER</span>
+                                </div>
+                                <div class="request-details">
+                                    <p><strong>Order ID:</strong> #{{ order.id }}</p>
+                                    <p><strong>Arrival:</strong> {{ order.arrival_time }}</p>
+                                    <p><strong>Items:</strong> {{ order.items|length }}</p>
+                                    <p><strong>Amount:</strong> ₹{{ order.final_total }}</p>
+                                </div>
+                                <div class="request-actions">
+                                    <button class="btn btn-sm btn-success" onclick="approveOrder({{ order.id }})">✓ Approve</button>
+                                    <button class="btn btn-sm btn-danger" onclick="declineOrder({{ order.id }})">✗ Decline</button>
+                                </div>
+                            </div>
+                            {% else %}
+                            <p style="text-align: center; color: #999; padding: 20px;">No pending pre-orders</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Parcel Orders -->
+                    <div class="approval-section">
+                        <h2>📦 Parcel Orders ({{ parcel_orders|length }})</h2>
+                        <div class="requests-list">
+                            {% for order in parcel_orders %}
+                            <div class="request-item">
+                                <div class="request-header">
+                                    <strong>{{ order.customer_id }}</strong>
+                                    <span class="badge badge-parcel">PARCEL</span>
+                                </div>
+                                <div class="request-details">
+                                    <p><strong>Order ID:</strong> #{{ order.id }}</p>
+                                    <p><strong>Pickup:</strong> {{ order.pickup_time }}</p>
+                                    <p><strong>Items:</strong> {{ order.items|length }}</p>
+                                    <p><strong>Amount:</strong> ₹{{ order.final_total }}</p>
+                                </div>
+                                <div class="request-actions">
+                                    <button class="btn btn-sm btn-success" onclick="approveOrder({{ order.id }})">✓ Approve</button>
+                                    <button class="btn btn-sm btn-danger" onclick="declineOrder({{ order.id }})">✗ Decline</button>
+                                </div>
+                            </div>
+                            {% else %}
+                            <p style="text-align: center; color: #999; padding: 20px;">No pending parcel orders</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>

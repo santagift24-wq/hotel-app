@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Food - {{ hotel.name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/order.css') }}">
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="container">
+            <h1>{{ hotel.name }}</h1>
+            <p>📱 Table {{ table }} - Order Your Favorite Food</p>
+        </div>
+    </div>
+
+    <div class="container order-container">
+        <!-- Order Type Selector -->
+        <div class="order-types">
+            <button class="order-type-btn active dine-in" onclick="selectOrderType('dine_in')">
+                🍽️ Dine-In
+            </button>
+            <button class="order-type-btn pre-order" onclick="selectOrderType('pre_order')">
+                ⏰ Pre-Order
+            </button>
+            <button class="order-type-btn parcel" onclick="selectOrderType('parcel')">
+                📦 Takeaway
+            </button>
+        </div>
+
+        <!-- Menu Section -->
+        <div class="menu-section">
+            <h2>Menu</h2>
+            <div id="menuGrid" class="menu-grid"></div>
+        </div>
+    </div>
+
+    <!-- Cart Summary (Fixed Bottom) -->
+    <div class="cart-summary" id="cartSummary">
+        <div class="container">
+            <div class="cart-content">
+                <div class="cart-items">
+                    <span id="cartItemCount">0 items</span> in cart
+                </div>
+                <div class="cart-total">
+                    <div>
+                        <div class="subtotal">Subtotal: ₹<span id="subtotal">0</span></div>
+                        <div class="tax">Tax: ₹<span id="tax">0</span></div>
+                        <div class="service-charge">Service: ₹<span id="serviceCharge">0</span></div>
+                    </div>
+                    <div class="total-amount">Total: ₹<span id="total">0</span></div>
+                    <button class="btn btn-primary" onclick="confirmOrder()">Order Now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Time Selection Modal (for Pre-Order & Parcel) -->
+    <div class="modal" id="timeModal">
+        <div class="modal-content">
+            <div class="modal-header">Select Time</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Choose Arrival/Pickup Time:</label>
+                    <input type="datetime-local" id="selectedTime" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('timeModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="proceedWithTime()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal (Dine-In) -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content">
+            <div class="modal-header">Confirm Your Order</div>
+            <div class="modal-body">
+                <div id="orderSummary"></div>
+                <div class="timer-message" style="margin-top: 20px;">
+                    You have <span id="timerDisplay">5:00</span> minutes to edit your order
+                </div>
+                <div style="text-align: center; margin-top: 10px; color: #999; font-size: 12px;">
+                    After the timer expires, your order will be locked
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="cancelOrder()">Cancel</button>
+                <button class="btn btn-primary" onclick="finalizeOrder()">Place Order</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div class="modal" id="successModal">
+        <div class="modal-content" style="text-align: center;">
+            <div style="font-size: 48px; margin: 20px 0;">✅</div>
+            <div class="modal-header">Order Placed Successfully!</div>
+            <div class="modal-body">
+                <p id="successMessage"></p>
+                <div style="background: #f0f0f0; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <strong id="orderIdDisplay"></strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="resetOrder()">Place Another Order</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/order.js') }}"></script>
+    <script>
+        // Initialize with table and hotel info
+        const TABLE_ID = {{ table }};
+        const HOTEL = {{ hotel | tojson }};
+        
+        // Load menu on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            loadMenu();
+        });
+    </script>
+</body>
+</html>

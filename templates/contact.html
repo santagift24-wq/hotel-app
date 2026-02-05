@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Us - Restaurant Ordering System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            margin-left: 2rem;
+            transition: opacity 0.3s;
+        }
+
+        .navbar a:hover {
+            opacity: 0.8;
+        }
+
+        .navbar h2 {
+            color: white;
+            margin: 0;
+            padding: 0;
+            font-size: 1.5rem;
+            white-space: nowrap;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 1.5rem;
+            font-size: 2.5rem;
+        }
+
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .contact-method {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-left: 4px solid #667eea;
+            border-radius: 5px;
+        }
+
+        .contact-method h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+
+        .contact-method p {
+            margin-bottom: 0.5rem;
+        }
+
+        .contact-form {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 150px;
+        }
+
+        .submit-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        .submit-button:hover {
+            opacity: 0.9;
+        }
+
+        .response-time {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 1rem;
+            margin-top: 2rem;
+            border-radius: 4px;
+            color: #0c5aa0;
+        }
+
+        footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+        }
+
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .contact-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h2>👑 Royal Dhaba</h2>
+        <div>
+            <a href="/">Home</a>
+            <a href="/about">About Us</a>
+            <a href="/contact">Contact Us</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/disclaimer">Disclaimer</a>
+            <a href="/faq">FAQs</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Contact Us</h1>
+        <p style="margin-bottom: 2rem; font-size: 1.1rem;">
+            We'd love to hear from you! Whether you have questions, suggestions, or need support, 
+            please reach out to us using any of the methods below.
+        </p>
+
+        <div class="contact-grid">
+            <div class="contact-method">
+                <h2>📧 Email</h2>
+                <p><strong>Support:</strong> support@restaurantsystem.com</p>
+                <p><strong>Sales:</strong> sales@restaurantsystem.com</p>
+                <p><strong>Partnerships:</strong> partners@restaurantsystem.com</p>
+                <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                    Response time: Within 24 hours
+                </p>
+            </div>
+
+            <div class="contact-method">
+                <h2>📞 Phone</h2>
+                <p><strong>Support:</strong> +91 8800-XXXX-XXXX</p>
+                <p><strong>Hours:</strong> 9 AM - 6 PM IST (Mon-Fri)</p>
+                <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                    For urgent issues, please email us
+                </p>
+            </div>
+
+            <div class="contact-method">
+                <h2>📍 Address</h2>
+                <p>Restaurant Ordering System</p>
+                <p>India</p>
+                <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                    Headquarters and support center
+                </p>
+            </div>
+
+            <div class="contact-method">
+                <h2>⏰ Business Hours</h2>
+                <p><strong>Monday - Friday:</strong> 9 AM - 6 PM IST</p>
+                <p><strong>Saturday - Sunday:</strong> 10 AM - 4 PM IST</p>
+                <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                    Closed on national holidays
+                </p>
+            </div>
+        </div>
+
+        <div class="contact-form">
+            <h2 style="color: #667eea; margin-bottom: 1.5rem;">Send us a Message</h2>
+            <form onsubmit="handleSubmit(event)">
+                <div class="form-group">
+                    <label for="name">Your Name *</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" name="phone">
+                </div>
+
+                <div class="form-group">
+                    <label for="subject">Subject *</label>
+                    <input type="text" id="subject" name="subject" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="message">Message *</label>
+                    <textarea id="message" name="message" required></textarea>
+                </div>
+
+                <button type="submit" class="submit-button">Send Message</button>
+            </form>
+
+            <div class="response-time">
+                <strong>ℹ️ Information:</strong> We typically respond within 24 hours. For faster response, 
+                please call us during business hours or email support@restaurantsystem.com with the tag [URGENT].
+            </div>
+        </div>
+
+        <div style="margin-top: 3rem; padding: 1.5rem; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 5px;">
+            <h2 style="color: #856404; margin-bottom: 0.5rem;">💡 FAQ</h2>
+            <p style="color: #856404; margin-bottom: 0.5rem;">
+                Before contacting us, please check our FAQ section which might answer your question quickly.
+            </p>
+            <a href="#" style="color: #667eea; font-weight: bold;">Browse FAQs →</a>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Restaurant Ordering System. All rights reserved.</p>
+    </footer>
+
+    <script>
+        function handleSubmit(event) {
+            event.preventDefault();
+            alert('Thank you for your message! We will get back to you soon.');
+            event.target.reset();
+        }
+    </script>
+</body>
+</html>

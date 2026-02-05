@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQs - Hotel Ordering System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            margin-left: 2rem;
+            transition: opacity 0.3s;
+        }
+
+        .navbar a:hover {
+            opacity: 0.8;
+        }
+
+        .navbar h2 {
+            color: white;
+            margin: 0;
+            padding: 0;
+            font-size: 1.5rem;
+            white-space: nowrap;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 1.5rem;
+            font-size: 2.5rem;
+        }
+
+        .faq-section {
+            margin-bottom: 3rem;
+        }
+
+        .faq-section h2 {
+            color: #667eea;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        .faq-item {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .faq-question {
+            padding: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #333;
+            transition: background 0.3s;
+        }
+
+        .faq-question:hover {
+            background: #e8eef7;
+        }
+
+        .faq-toggle {
+            font-size: 1.2rem;
+            transition: transform 0.3s;
+            color: #667eea;
+        }
+
+        .faq-item.active .faq-toggle {
+            transform: rotate(180deg);
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .faq-item.active .faq-answer {
+            max-height: 500px;
+        }
+
+        .faq-answer-content {
+            padding: 0 1.5rem 1.5rem;
+            color: #555;
+        }
+
+        footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+        }
+
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h2>👑 Royal Dhaba</h2>
+        <div>
+            <a href="/">Home</a>
+            <a href="/about">About Us</a>
+            <a href="/contact">Contact Us</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/disclaimer">Disclaimer</a>
+            <a href="/faq">FAQs</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Frequently Asked Questions</h1>
+
+        <!-- Getting Started Section -->
+        <div class="faq-section">
+            <h2>Getting Started</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>What is Hotel Ordering System?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Hotel Ordering System is a complete digital solution for restaurants and hotels to manage table orders, menus, and operations efficiently. Customers can scan QR codes at tables and place orders in real-time, while staff can track and manage orders through an intuitive dashboard.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Is there a free trial?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Yes! We offer a 7-day free trial with full access to all features. No credit card is required to start. You can explore all features risk-free and decide if it's right for your restaurant.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How do I sign up?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Click on "Create Account" in the top menu. Fill in your hotel/restaurant name, create a unique Hotel ID, provide your email, and set a password. You'll gain immediate access to the full platform for 7 days.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="faq-section">
+            <h2>Features & Functionality</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How do customers place orders?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Each table has a QR code. Customers simply scan the QR code with their phone, select items from your digital menu, and place their order. The order is sent directly to your kitchen display system.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Can I customize my menu?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Absolutely! You have complete control over your menu. Add, edit, or remove items anytime. Include item descriptions, prices, and even upload images for better presentation. Changes take effect immediately.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How many tables can I manage?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Our Enterprise plan supports unlimited tables, while our Basic and Pro plans support 10 and 50 tables respectively. You can always upgrade later as your restaurant grows.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Do you provide reporting and analytics?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Yes! We provide detailed daily reports with sales analytics, top-selling items, order trends, and more. Reports are automatically generated and can be emailed to you daily.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Billing & Subscription Section -->
+        <div class="faq-section">
+            <h2>Billing & Subscription</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>What are your subscription plans?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        We offer three plans: Basic (₹2,499/month, up to 10 tables), Pro (₹5,999/month, up to 50 tables), and Enterprise (₹15,999/month, unlimited tables). Each plan includes email support, and higher tiers get priority support and advanced features.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Can I change my plan?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Yes, you can upgrade or downgrade your plan anytime. Changes take effect immediately, and we'll adjust your billing accordingly (pro-rata basis).
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>What payment methods do you accept?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        We accept all major payment methods through Razorpay, including credit cards, debit cards, UPI, net banking, and digital wallets. All payments are secured and encrypted.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Can I cancel my subscription?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Yes, you can cancel anytime without any penalty. Your account will remain active until the end of the current billing period. No hidden charges or long-term contracts.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Support Section -->
+        <div class="faq-section">
+            <h2>Support & Troubleshooting</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Is my data secure?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Absolutely. We use industry-leading security standards including SSL encryption, secure databases, and regular backups. Your data is isolated and protected according to our data security policy.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>What if I forget my password?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        You can reset your password using the "Forgot Password?" link on the login page. Enter your email, and we'll send you instructions to reset your password securely.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>What if QR codes are not scanning?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Make sure the QR codes are printed clearly and not damaged. Use a standard smartphone camera or QR code app. If issues persist, contact our support team and we'll help resolve it immediately.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How do I contact support?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        You can reach our support team through the "Contact Us" page, or email us directly at support@hotelsystem.com. Pro and Enterprise plans include priority support with faster response times.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data & Privacy Section -->
+        <div class="faq-section">
+            <h2>Data & Privacy</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How long do you retain my data?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        We retain order data for 90 days. After 90 days of inactivity, your account is automatically deactivated, and all data is permanently deleted. You can request data deletion anytime from your account settings.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Can I export my data?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Yes, you can export your order history and reports anytime from the dashboard. We provide data in common formats (CSV, PDF) for easy use in your business intelligence tools.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Is my customer data protected?</span>
+                    <span class="faq-toggle">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        We follow strict data protection practices. Customer data collected through orders is encrypted and used only for order processing. We never share customer data with third parties without explicit consent.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Hotel Ordering System. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // FAQ Toggle Functionality
+        const faqItems = document.querySelectorAll('.faq-item');
+        
+        faqItems.forEach(item => {
+            const question = item.querySelector('.faq-question');
+            
+            question.addEventListener('click', () => {
+                // Close other items
+                faqItems.forEach(otherItem => {
+                    if (otherItem !== item) {
+                        otherItem.classList.remove('active');
+                    }
+                });
+                
+                // Toggle current item
+                item.classList.toggle('active');
+            });
+        });
+    </script>
+</body>
+</html>

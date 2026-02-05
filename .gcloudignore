@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# Database (local only)
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+*.txt.bak
+
+# Logs
+*.log
+*.out
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Static generated files (regenerate on server)
+static/qr_codes/
+static/menu_images/

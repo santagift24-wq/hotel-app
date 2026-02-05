@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disclaimer - Restaurant Ordering System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #fff;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            margin-left: 2rem;
+            transition: opacity 0.3s;
+        }
+
+        .navbar a:hover {
+            opacity: 0.8;
+        }
+
+        .navbar h2 {
+            color: white;
+            margin: 0;
+            padding: 0;
+            font-size: 1.5rem;
+            white-space: nowrap;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+        }
+
+        .last-updated {
+            color: #666;
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+
+        h2 {
+            color: #667eea;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            color: #764ba2;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin-left: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+            color: #856404;
+        }
+
+        .liability {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+            color: #721c24;
+        }
+
+        .notice {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+            color: #0c5aa0;
+        }
+
+        footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+        }
+
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .toc {
+            background: #f0f4ff;
+            padding: 1.5rem;
+            border-radius: 5px;
+            margin: 2rem 0;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+
+        .toc ul {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .toc a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h2>👑 Royal Dhaba</h2>
+        <div>
+            <a href="/">Home</a>
+            <a href="/about">About Us</a>
+            <a href="/contact">Contact Us</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/disclaimer">Disclaimer</a>
+            <a href="/faq">FAQs</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Disclaimer</h1>
+        <div class="last-updated">
+            Last Updated: January 2026
+        </div>
+
+        <div class="toc">
+            <h3>📋 Table of Contents</h3>
+            <ul>
+                <li><a href="#general">1. General Disclaimer</a></li>
+                <li><a href="#service-availability">2. Service Availability</a></li>
+                <li><a href="#limitation-liability">3. Limitation of Liability</a></li>
+                <li><a href="#content">4. Content Disclaimer</a></li>
+                <li><a href="#third-party">5. Third-Party Services</a></li>
+                <li><a href="#payment">6. Payment & Refund Disclaimer</a></li>
+                <li><a href="#technical">7. Technical Issues</a></li>
+                <li><a href="#warranty">8. Warranty Disclaimer</a></li>
+                <li><a href="#user-responsibility">9. User Responsibility</a></li>
+                <li><a href="#changes">10. Changes to Disclaimer</a></li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Important:</strong> Please read this disclaimer carefully before using 
+            the Restaurant Ordering System. By accessing and using our platform, you accept 
+            all terms and conditions outlined in this disclaimer.
+        </div>
+
+        <h2 id="general">1. General Disclaimer</h2>
+        <p>
+            The Restaurant Ordering System ("Platform", "Service", "we", "us") is provided on 
+            an "AS IS" basis. We make no representations or warranties, express or implied, 
+            regarding the Platform's operation or the information, content, materials, or products 
+            included on the Platform.
+        </p>
+        <p>
+            This disclaimer applies to all users of the Platform, including restaurant owners, 
+            customers, staff members, and any other parties accessing our service.
+        </p>
+
+        <h2 id="service-availability">2. Service Availability</h2>
+        <h3>2.1 Uptime & Downtime</h3>
+        <p>
+            While we strive to maintain 99% uptime, we do not guarantee continuous, uninterrupted 
+            access to the Platform. The Platform may be unavailable for maintenance, updates, or 
+            due to technical issues beyond our control.
+        </p>
+
+        <h3>2.2 Maintenance & Updates</h3>
+        <ul>
+            <li>We may perform scheduled maintenance without prior notice</li>
+            <li>Emergency maintenance may be performed to ensure security and stability</li>
+            <li>During maintenance, the service may be temporarily unavailable</li>
+            <li>We will make reasonable efforts to minimize service interruption</li>
+        </ul>
+
+        <h3>2.3 No Responsibility for Downtime</h3>
+        <div class="liability">
+            We are not responsible for any losses, damages, or claims arising from service 
+            unavailability, including but not limited to lost orders, lost revenue, or 
+            business interruption.
+        </div>
+
+        <h2 id="limitation-liability">3. Limitation of Liability</h2>
+
+        <h3>3.1 Exclusion of Damages</h3>
+        <p>
+            To the maximum extent permitted by law, we shall not be liable for:
+        </p>
+        <ul>
+            <li>Any direct, indirect, incidental, special, consequential, or punitive damages</li>
+            <li>Lost profits, data loss, or business interruption</li>
+            <li>Loss of revenue or anticipated savings</li>
+            <li>Reputational harm or emotional distress</li>
+            <li>Any other losses resulting from the use or inability to use the Platform</li>
+        </ul>
+
+        <h3>3.2 Liability Cap</h3>
+        <p>
+            Our total liability to you for any claims arising from or relating to this service 
+            shall not exceed the amount you have paid to us in the past 12 months for the service.
+        </p>
+
+        <div class="notice">
+            <strong>ℹ️ Example:</strong> If you paid ₹50,000 in subscription fees over 12 months, 
+            our maximum liability is ₹50,000 regardless of the actual damages you claim.
+        </div>
+
+        <h3>3.3 No Consequential Damages</h3>
+        <p>
+            We will not be liable for any consequential, incidental, special, indirect, or punitive 
+            damages, even if we have been informed of the possibility of such damages.
+        </p>
+
+        <h2 id="content">4. Content Disclaimer</h2>
+
+        <h3>4.1 User-Generated Content</h3>
+        <p>
+            Restaurant owners are responsible for all content they upload to the Platform, including:
+        </p>
+        <ul>
+            <li>Menu items and descriptions</li>
+            <li>Pricing information</li>
+            <li>Images and photographs</li>
+            <li>Business descriptions and policies</li>
+            <li>Customer interactions</li>
+        </ul>
+
+        <h3>4.2 Content Accuracy</h3>
+        <p>
+            We do not verify the accuracy, completeness, or legality of any content uploaded by 
+            users. Restaurant owners are solely responsible for ensuring their content is:
+        </p>
+        <ul>
+            <li>Accurate and truthful</li>
+            <li>Not misleading or deceptive</li>
+            <li>Compliant with all applicable laws</li>
+            <li>Respecting all intellectual property rights</li>
+        </ul>
+
+        <h3>4.3 Image Authenticity</h3>
+        <p>
+            We cannot guarantee that menu images accurately represent the actual food served. 
+            Restaurant owners warrant that they have the right to use all images displayed on 
+            the Platform.
+        </p>
+
+        <h2 id="third-party">5. Third-Party Services</h2>
+
+        <h3>5.1 External Integrations</h3>
+        <p>
+            Our Platform integrates with third-party services including:
+        </p>
+        <ul>
+            <li><strong>Razorpay:</strong> Payment processing gateway</li>
+            <li><strong>Email Services:</strong> For notifications and communications</li>
+            <li><strong>Hosting Providers:</strong> For infrastructure and storage</li>
+        </ul>
+
+        <h3>5.2 No Control Over Third Parties</h3>
+        <p>
+            We do not control, endorse, or guarantee third-party services. Any issues, outages, 
+            or problems with these services are beyond our control. We are not responsible for:
+        </p>
+        <ul>
+            <li>Third-party service downtime or failures</li>
+            <li>Data breaches at third-party providers</li>
+            <li>Changes to third-party service terms or pricing</li>
+            <li>Any actions or policies of third-party providers</li>
+        </ul>
+
+        <h3>5.3 Links to External Websites</h3>
+        <p>
+            The Platform may contain links to external websites. We are not responsible for the 
+            content, accuracy, or practices of external websites. Use external links at your own risk.
+        </p>
+
+        <h2 id="payment">6. Payment & Refund Disclaimer</h2>
+
+        <h3>6.1 Payment Processing</h3>
+        <p>
+            All payments are processed through Razorpay. By making a payment, you agree to 
+            Razorpay's terms and conditions.
+        </p>
+
+        <h3>6.2 Payment Verification</h3>
+        <p>
+            We use HMAC-SHA256 signature verification to authenticate payments. While this is 
+            industry-standard, no payment system is 100% secure. We are not liable for:
+        </p>
+        <ul>
+            <li>Fraudulent transactions (subject to verification)</li>
+            <li>Unauthorized access to payment information</li>
+            <li>Failed payment processing</li>
+            <li>Network or connectivity issues during payment</li>
+        </ul>
+
+        <h3>6.3 Refund Policy</h3>
+        <p>
+            All subscription payments are final and non-refundable. You are responsible for:
+        </p>
+        <ul>
+            <li>Reviewing your subscription plan before purchase</li>
+            <li>Understanding the features and terms</li>
+            <li>Managing your subscription and billing information</li>
+        </ul>
+
+        <div class="warning">
+            <strong>⚠️ Trial Period:</strong> The free 7-day trial cannot be extended or refunded. 
+            If you decide not to purchase a paid subscription, your account will be deactivated 
+            on day 8 as per our terms.
+        </div>
+
+        <h2 id="technical">7. Technical Issues</h2>
+
+        <h3>7.1 Data Integrity</h3>
+        <p>
+            While we implement robust backup and security measures, we do not guarantee:
+        </p>
+        <ul>
+            <li>Protection against all data loss scenarios</li>
+            <li>Recovery from all possible system failures</li>
+            <li>Prevention of data corruption in all circumstances</li>
+        </ul>
+
+        <h3>7.2 Performance Issues</h3>
+        <p>
+            We are not responsible for:
+        </p>
+        <ul>
+            <li>Slow loading times or performance issues</li>
+            <li>Browser compatibility problems</li>
+            <li>Mobile device functionality issues</li>
+            <li>Issues caused by user's internet connection</li>
+        </ul>
+
+        <h3>7.3 Security</h3>
+        <p>
+            While we implement industry-standard security measures, no online service is completely 
+            secure. We recommend:
+        </p>
+        <ul>
+            <li>Using strong, unique passwords</li>
+            <li>Changing passwords regularly</li>
+            <li>Enabling two-factor authentication if available</li>
+            <li>Not sharing login credentials</li>
+            <li>Keeping your device secure</li>
+        </ul>
+
+        <h2 id="warranty">8. Warranty Disclaimer</h2>
+
+        <h3>8.1 AS-IS Disclaimer</h3>
+        <div class="liability">
+            THE PLATFORM IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+            INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+            PURPOSE, AND NON-INFRINGEMENT.
+        </div>
+
+        <h3>8.2 No Guarantee of Results</h3>
+        <p>
+            We do not warrant that:
+        </p>
+        <ul>
+            <li>The Platform will meet your specific requirements</li>
+            <li>The service will be uninterrupted or error-free</li>
+            <li>Defects will be corrected</li>
+            <li>Using the Platform will result in increased business or sales</li>
+            <li>The Platform is free from viruses or harmful components</li>
+        </ul>
+
+        <h2 id="user-responsibility">9. User Responsibility</h2>
+
+        <h3>9.1 Compliance with Laws</h3>
+        <p>
+            You agree to use the Platform only for lawful purposes and in compliance with all 
+            applicable laws and regulations. You are responsible for:
+        </p>
+        <ul>
+            <li>Ensuring your content is legally compliant</li>
+            <li>Paying applicable taxes (we are not a tax advisor)</li>
+            <li>Complying with food safety and health regulations</li>
+            <li>Protecting customer privacy and data</li>
+            <li>Following consumer protection laws</li>
+        </ul>
+
+        <h3>9.2 Account Security</h3>
+        <p>
+            You are solely responsible for maintaining the confidentiality of your account 
+            credentials and all activities that occur under your account.
+        </p>
+
+        <h3>9.3 Prohibited Activities</h3>
+        <p>
+            You agree not to:
+        </p>
+        <ul>
+            <li>Use the Platform for illegal activities</li>
+            <li>Attempt to hack or breach the platform</li>
+            <li>Share false or misleading information</li>
+            <li>Harass or abuse other users</li>
+            <li>Violate others' intellectual property rights</li>
+            <li>Reverse-engineer or copy our platform</li>
+        </ul>
+
+        <h2 id="changes">10. Changes to Disclaimer</h2>
+        <p>
+            We reserve the right to modify this disclaimer at any time without prior notice. 
+            Changes are effective immediately upon posting to the Platform. Your continued use 
+            of the Platform after changes constitutes your acceptance of the updated disclaimer.
+        </p>
+
+        <p>
+            It is your responsibility to review this disclaimer periodically. We recommend checking 
+            back regularly to stay informed of any updates.
+        </p>
+
+        <div class="notice">
+            <strong>ℹ️ Questions?</strong> If you have questions about this disclaimer, please 
+            contact us at legal@restaurantsystem.com
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Restaurant Ordering System. All rights reserved.</p>
+    </footer>
+</body>
+</html>

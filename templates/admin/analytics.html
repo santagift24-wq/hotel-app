@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏨 Admin</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-item">📊 Dashboard</a>
+                <a href="{{ url_for('admin_tables') }}" class="nav-item">🪑 Tables & QR</a>
+                <a href="{{ url_for('admin_menu') }}" class="nav-item">🍽️ Menu</a>
+                <a href="{{ url_for('admin_approvals') }}" class="nav-item">✅ Approvals</a>
+                <a href="{{ url_for('admin_billing') }}" class="nav-item">💳 Billing</a>
+                <a href="{{ url_for('admin_analytics') }}" class="nav-item active">📈 Analytics</a>
+                <a href="{{ url_for('admin_profile') }}" class="nav-item">👤 Profile</a>
+                <a href="{{ url_for('admin_logout') }}" class="nav-item logout">🚪 Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="top-bar">
+                <div>
+                    <h2 style="margin: 0;">📈 Analytics & Reports</h2>
+                </div>
+            </div>
+
+            <div class="content">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-body">
+                            <div class="stat-value">₹{{ total_revenue }}</div>
+                            <div class="stat-label">Total Revenue</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-body">
+                            <div class="stat-value">{{ total_orders }}</div>
+                            <div class="stat-label">Total Orders</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🖨️</div>
+                        <div class="stat-body">
+                            <div class="stat-value">{{ bills_printed }}</div>
+                            <div class="stat-label">Bills Printed</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-body">
+                            <div class="stat-value">₹{{ avg_order_value }}</div>
+                            <div class="stat-label">Avg Order Value</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Revenue Breakdown -->
+                <div class="section">
+                    <h2>Revenue Breakdown by Order Type</h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                        <div class="breakdown-card">
+                            <div class="breakdown-label">🍽️ Dine-In</div>
+                            <div class="breakdown-value">₹{{ revenue_by_type.dine_in }}</div>
+                        </div>
+                        <div class="breakdown-card">
+                            <div class="breakdown-label">⏰ Pre-Order</div>
+                            <div class="breakdown-value">₹{{ revenue_by_type.pre_order }}</div>
+                        </div>
+                        <div class="breakdown-card">
+                            <div class="breakdown-label">📦 Parcel</div>
+                            <div class="breakdown-value">₹{{ revenue_by_type.parcel }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>

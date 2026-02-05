@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing - Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏨 Admin</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-item">📊 Dashboard</a>
+                <a href="{{ url_for('admin_tables') }}" class="nav-item">🪑 Tables & QR</a>
+                <a href="{{ url_for('admin_menu') }}" class="nav-item">🍽️ Menu</a>
+                <a href="{{ url_for('admin_approvals') }}" class="nav-item">✅ Approvals</a>
+                <a href="{{ url_for('admin_billing') }}" class="nav-item active">💳 Billing</a>
+                <a href="{{ url_for('admin_analytics') }}" class="nav-item">📈 Analytics</a>
+                <a href="{{ url_for('admin_profile') }}" class="nav-item">👤 Profile</a>
+                <a href="{{ url_for('admin_logout') }}" class="nav-item logout">🚪 Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="top-bar">
+                <div class="search-bar">
+                    <input type="text" placeholder="Search bills...">
+                </div>
+                <div class="top-bar-right">
+                    <span class="username">👤 {{ session.get('admin_username', 'Admin') }}</span>
+                </div>
+            </div>
+
+            <div class="content">
+                <h1>💳 Billing Management</h1>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Bill #</th>
+                            <th>Order ID</th>
+                            <th>Type</th>
+                            <th>Customer ID</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bill in bills %}
+                        <tr>
+                            <td><strong>BILL-{{ bill.id | string | rjust(5, '0') }}</strong></td>
+                            <td>#{{ bill.id }}</td>
+                            <td><span class="badge badge-{{ bill.type }}">{{ bill.type.replace('_', ' ').title() }}</span></td>
+                            <td>{{ bill.customer_id or 'Table ' + bill.table_id|string }}</td>
+                            <td><strong>₹{{ bill.final_total }}</strong></td>
+                            <td><span class="badge badge-success">Billed</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewBill({{ bill.id }})">View</button>
+                                <button class="btn btn-sm btn-warning" onclick="printBill({{ bill.id }})">Print</button>
+                                <button class="btn btn-sm btn-secondary" onclick="downloadBill({{ bill.id }})">PDF</button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 20px; color: #999;">No billed orders</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>
