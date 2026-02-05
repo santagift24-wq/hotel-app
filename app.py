@@ -894,6 +894,7 @@ def init_db():
         # Tables QR codes
         c.execute('''CREATE TABLE IF NOT EXISTS restaurant_tables (
             id INTEGER PRIMARY KEY,
+            hotel_id INTEGER,
             table_number INTEGER UNIQUE,
             qr_code TEXT,
             is_active INTEGER DEFAULT 1,
