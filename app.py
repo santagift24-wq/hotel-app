@@ -44,7 +44,13 @@ if USE_POSTGRES:
         'port': os.environ.get('DB_PORT', '5432')
     }
 
-app = Flask(__name__)
+# Configure Flask with explicit paths for templates and static files
+# This ensures they work correctly in cloud deployments like Railway
+app_dir = os.path.dirname(os.path.abspath(__file__))
+template_dir = os.path.join(app_dir, 'templates')
+static_dir = os.path.join(app_dir, 'static')
+
+app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 app.secret_key = os.environ.get('SECRET_KEY', 'restaurant_system_secret_2026')
 
 # Email Configuration for sending reports
