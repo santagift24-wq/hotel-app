@@ -15,6 +15,7 @@ import string
 from functools import wraps
 from io import BytesIO
 import qrcode
+from PIL import Image, ImageDraw, ImageFont
 from werkzeug.security import generate_password_hash, check_password_hash
 import random
 from reportlab.lib.pagesizes import letter, A4
@@ -1496,18 +1497,41 @@ def admin_tables():
             qr.add_data(qr_url)
             qr.make(fit=True)
             
-            # Create image and save it
+            # Create QR image
             qr_image = qr.make_image(fill_color="black", back_color="white")
+            
+            # Create a larger image with QR code and table number text
+            qr_size = qr_image.size[0]
+            # Create new image with space for text below QR code
+            final_image = Image.new('RGB', (qr_size, qr_size + 60), color='white')
+            final_image.paste(qr_image, (0, 0))
+            
+            # Add table number text below QR code
+            draw = ImageDraw.Draw(final_image)
+            try:
+                # Try to use a default font
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
+            except:
+                # Fallback to default font if truetype not available
+                font = ImageFont.load_default()
+            
+            # Draw table number text
+            text = f"TABLE {table_id}"
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_x = (qr_size - text_width) // 2
+            text_y = qr_size + 15
+            draw.text((text_x, text_y), text, fill='black', font=font)
             
             # Ensure static/qr_codes directory exists
             qr_dir = os.path.join('static', 'qr_codes')
             if not os.path.exists(qr_dir):
                 os.makedirs(qr_dir)
             
-            # Save QR code image
+            # Save QR code image with table number
             qr_filename = f"table_{table_id}_qr.png"
             qr_path = os.path.join(qr_dir, qr_filename)
-            qr_image.save(qr_path)
+            final_image.save(qr_path)
             
             # Update the table with the QR filename
             c.execute('UPDATE restaurant_tables SET qr_code = ? WHERE id = ?',
