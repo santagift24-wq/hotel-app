@@ -850,12 +850,16 @@ def generate_hotel_slug(hotel_name):
 
 def is_hotel_slug_available(slug):
     """Check if hotel slug is already taken"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('SELECT id FROM settings WHERE hotel_slug = ?', (slug.lower(),))
-    result = c.fetchone()
-    conn.close()
-    return result is None
+    try:
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('SELECT id FROM settings WHERE hotel_slug = ?', (slug.lower(),))
+        result = c.fetchone()
+        conn.close()
+        return result is None
+    except Exception as e:
+        print(f"[WARNING] Error checking hotel slug availability: {e}")
+        return True  # Assume available if database error
 
 
 # Custom Jinja2 filter for JSON parsing
@@ -2615,8 +2619,11 @@ def not_found(error):
 @app.errorhandler(500)
 def internal_error(error):
     """Handle internal server errors gracefully"""
+    import traceback
+    tb = traceback.format_exc()
     print(f"[ERROR 500] Internal Server Error: {str(error)}")
-    return jsonify({'error': 'Internal Server Error', 'message': 'An unexpected error occurred'}), 500
+    print(f"[TRACEBACK]\n{tb}")
+    return jsonify({'error': 'Internal Server Error', 'message': str(error), 'details': tb}), 500
 
 # ============================================================================
 # MAIN
