@@ -1038,17 +1038,23 @@ def init_db():
         except:
             pass
         
-        # Create default restaurant tables (1-12)
+        # Create default restaurant tables (1-12) if missing
         try:
-            c.execute('SELECT COUNT(*) FROM restaurant_tables')
-            if c.fetchone()[0] == 0:
-                # Insert 12 default tables
+            # Check if any tables exist for hotel 1
+            c.execute('SELECT COUNT(*) FROM restaurant_tables WHERE hotel_id = 1')
+            table_count = c.fetchone()[0]
+            
+            # Only add if none exist
+            if table_count == 0:
                 for table_num in range(1, 13):
-                    c.execute('INSERT INTO restaurant_tables (hotel_id, table_number, is_active) VALUES (?, ?, ?)',
-                             (1, table_num, 1))
+                    try:
+                        c.execute('INSERT INTO restaurant_tables (hotel_id, table_number, is_active) VALUES (?, ?, ?)',
+                                 (1, table_num, 1))
+                    except:
+                        pass  # Skip if duplicate
                 conn.commit()
         except Exception as e:
-            print(f"[WARNING] Error creating default tables: {e}")
+            print(f"[WARNING] Error checking/creating default tables: {e}")
             pass
         
         conn.close()
