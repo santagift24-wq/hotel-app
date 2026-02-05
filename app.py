@@ -873,7 +873,7 @@ app.jinja_env.filters['from_json'] = from_json
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'restaurant.db')
 
 def init_db():
-    """Initialize database"""
+    """Initialize database - creates all necessary tables"""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
