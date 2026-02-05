@@ -873,179 +873,173 @@ app.jinja_env.filters['from_json'] = from_json
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'restaurant.db')
 
 def init_db():
-    """Initialize database - creates all necessary tables"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    # Admin users table
-    c.execute('''CREATE TABLE IF NOT EXISTS admin_users (
-        id INTEGER PRIMARY KEY,
-        username TEXT UNIQUE,
-        password TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Tables QR codes
-    c.execute('''CREATE TABLE IF NOT EXISTS restaurant_tables (
-        id INTEGER PRIMARY KEY,
-        table_number INTEGER UNIQUE,
-        qr_code TEXT,
-        is_active INTEGER DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Menu items
-    c.execute('''CREATE TABLE IF NOT EXISTS menu_items (
-        id INTEGER PRIMARY KEY,
-        name TEXT,
-        category TEXT,
-        price REAL,
-        description TEXT,
-        image_path TEXT,
-        is_available INTEGER DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Settings table
-    c.execute('''CREATE TABLE IF NOT EXISTS settings (
-        id INTEGER PRIMARY KEY,
-        hotel_name TEXT DEFAULT 'Royal Restaurant',
-        hotel_slug TEXT UNIQUE,
-        hotel_address TEXT,
-        hotel_gstn TEXT,
-        hotel_food_license TEXT,
-        hotel_logo TEXT,
-        owner_email TEXT,
-        owner_password TEXT,
-        auto_accept_orders INTEGER DEFAULT 0,
-        print_name INTEGER DEFAULT 1,
-        print_address INTEGER DEFAULT 1,
-        print_gstn INTEGER DEFAULT 1,
-        print_license INTEGER DEFAULT 1,
-        subscription_status TEXT DEFAULT 'trial',
-        trial_ends_at TIMESTAMP,
-        subscription_end_date TIMESTAMP,
-        is_active INTEGER DEFAULT 1,
-        last_payment_date TIMESTAMP,
-        subscription_plan TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Orders
-    c.execute('''CREATE TABLE IF NOT EXISTS orders (
-        id INTEGER PRIMARY KEY,
-        table_id INTEGER,
-        table_number INTEGER,
-        items TEXT,
-        subtotal REAL,
-        tax REAL,
-        service_charge REAL,
-        total REAL,
-        status TEXT DEFAULT 'pending',
-        assigned_to INTEGER,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (table_id) REFERENCES restaurant_tables(id),
-        FOREIGN KEY (assigned_to) REFERENCES sub_admins(id)
-    )''')
-    
-    # Sub-admins table
-    c.execute('''CREATE TABLE IF NOT EXISTS sub_admins (
-        id INTEGER PRIMARY KEY,
-        username TEXT UNIQUE,
-        password TEXT,
-        name TEXT,
-        assigned_tables TEXT,
-        assigned_categories TEXT,
-        is_active INTEGER DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Payments table
-    c.execute('''CREATE TABLE IF NOT EXISTS payments (
-        id INTEGER PRIMARY KEY,
-        hotel_id INTEGER,
-        order_id INTEGER,
-        payment_id TEXT,
-        order_id_razorpay TEXT,
-        amount REAL,
-        currency TEXT,
-        status TEXT DEFAULT 'pending',
-        plan TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (hotel_id) REFERENCES settings(id),
-        FOREIGN KEY (order_id) REFERENCES orders(id)
-    )''')
-    
-    # OTP tokens table
-    c.execute('''CREATE TABLE IF NOT EXISTS otp_tokens (
-        id INTEGER PRIMARY KEY,
-        owner_email TEXT,
-        otp_code TEXT,
-        is_used INTEGER DEFAULT 0,
-        expires_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Subscription logs table
-    c.execute('''CREATE TABLE IF NOT EXISTS subscription_logs (
-        id INTEGER PRIMARY KEY,
-        hotel_id INTEGER,
-        hotel_name TEXT,
-        event_type TEXT,
-        event_description TEXT,
-        new_status TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (hotel_id) REFERENCES settings(id)
-    )''')
-    
-    conn.commit()
-    
-    # Add columns if they don't exist
+    """Initialize database - with full error tolerance"""
     try:
-        c.execute('ALTER TABLE settings ADD COLUMN hotel_address TEXT')
-        c.execute('ALTER TABLE settings ADD COLUMN hotel_gstn TEXT')
-        c.execute('ALTER TABLE settings ADD COLUMN hotel_food_license TEXT')
-        c.execute('ALTER TABLE settings ADD COLUMN print_name INTEGER DEFAULT 1')
-        c.execute('ALTER TABLE settings ADD COLUMN print_address INTEGER DEFAULT 1')
-        c.execute('ALTER TABLE settings ADD COLUMN print_gstn INTEGER DEFAULT 1')
-        c.execute('ALTER TABLE settings ADD COLUMN print_license INTEGER DEFAULT 1')
-        c.execute('ALTER TABLE settings ADD COLUMN hotel_slug TEXT UNIQUE')
-        c.execute('ALTER TABLE settings ADD COLUMN owner_email TEXT')
-        c.execute('ALTER TABLE settings ADD COLUMN owner_password TEXT')
-        c.execute('ALTER TABLE settings ADD COLUMN subscription_status TEXT DEFAULT "trial"')
-        c.execute('ALTER TABLE settings ADD COLUMN trial_ends_at TIMESTAMP')
-        c.execute('ALTER TABLE settings ADD COLUMN subscription_end_date TIMESTAMP')
-        c.execute('ALTER TABLE settings ADD COLUMN is_active INTEGER DEFAULT 1')
-        c.execute('ALTER TABLE settings ADD COLUMN last_payment_date TIMESTAMP')
-        c.execute('ALTER TABLE settings ADD COLUMN subscription_plan TEXT')
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        # Admin users table
+        c.execute('''CREATE TABLE IF NOT EXISTS admin_users (
+            id INTEGER PRIMARY KEY,
+            username TEXT UNIQUE,
+            password TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Tables QR codes
+        c.execute('''CREATE TABLE IF NOT EXISTS restaurant_tables (
+            id INTEGER PRIMARY KEY,
+            table_number INTEGER UNIQUE,
+            qr_code TEXT,
+            is_active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Menu items
+        c.execute('''CREATE TABLE IF NOT EXISTS menu_items (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            category TEXT,
+            price REAL,
+            description TEXT,
+            image_path TEXT,
+            is_available INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Settings table
+        c.execute('''CREATE TABLE IF NOT EXISTS settings (
+            id INTEGER PRIMARY KEY,
+            hotel_name TEXT DEFAULT 'Royal Restaurant',
+            hotel_slug TEXT UNIQUE,
+            hotel_address TEXT,
+            hotel_gstn TEXT,
+            hotel_food_license TEXT,
+            hotel_logo TEXT,
+            owner_email TEXT,
+            owner_password TEXT,
+            auto_accept_orders INTEGER DEFAULT 0,
+            print_name INTEGER DEFAULT 1,
+            print_address INTEGER DEFAULT 1,
+            print_gstn INTEGER DEFAULT 1,
+            print_license INTEGER DEFAULT 1,
+            subscription_status TEXT DEFAULT 'trial',
+            trial_ends_at TIMESTAMP,
+            subscription_end_date TIMESTAMP,
+            is_active INTEGER DEFAULT 1,
+            last_payment_date TIMESTAMP,
+            subscription_plan TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Orders table
+        c.execute('''CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY,
+            table_id INTEGER,
+            table_number INTEGER,
+            items TEXT,
+            subtotal REAL,
+            tax REAL,
+            service_charge REAL,
+            total REAL,
+            status TEXT DEFAULT 'pending',
+            assigned_to INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Sub-admins table
+        c.execute('''CREATE TABLE IF NOT EXISTS sub_admins (
+            id INTEGER PRIMARY KEY,
+            username TEXT UNIQUE,
+            password TEXT,
+            name TEXT,
+            assigned_tables TEXT,
+            assigned_categories TEXT,
+            is_active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Payments table
+        c.execute('''CREATE TABLE IF NOT EXISTS payments (
+            id INTEGER PRIMARY KEY,
+            hotel_id INTEGER,
+            order_id INTEGER,
+            payment_id TEXT,
+            order_id_razorpay TEXT,
+            amount REAL,
+            currency TEXT,
+            status TEXT DEFAULT 'pending',
+            plan TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # OTP tokens table
+        c.execute('''CREATE TABLE IF NOT EXISTS otp_tokens (
+            id INTEGER PRIMARY KEY,
+            owner_email TEXT,
+            otp_code TEXT,
+            is_used INTEGER DEFAULT 0,
+            expires_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Subscription logs table
+        c.execute('''CREATE TABLE IF NOT EXISTS subscription_logs (
+            id INTEGER PRIMARY KEY,
+            hotel_id INTEGER,
+            hotel_name TEXT,
+            event_type TEXT,
+            event_description TEXT,
+            new_status TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
         conn.commit()
-    except:
-        pass
-    
-    # Create default settings if not exist
-    c.execute('SELECT * FROM settings')
-    if not c.fetchone():
-        c.execute('INSERT INTO settings (hotel_name, hotel_slug) VALUES (?, ?)', ('Royal Restaurant', 'royal-restaurant'))
-        conn.commit()
-    
-    # Create default admin user if not exist
-    c.execute('SELECT * FROM admin_users WHERE username = ?', ('admin',))
-    if not c.fetchone():
-        c.execute('INSERT INTO admin_users (username, password) VALUES (?, ?)', ('admin', 'admin123'))
-        conn.commit()
-    
-    conn.close()
+        
+        # Add columns if they don't exist
+        try:
+            c.execute('ALTER TABLE settings ADD COLUMN owner_password TEXT')
+            conn.commit()
+        except:
+            pass
+        
+        # Insert default data if tables are empty
+        try:
+            c.execute('SELECT COUNT(*) FROM settings')
+            if c.fetchone()[0] == 0:
+                c.execute('INSERT INTO settings (hotel_name, hotel_slug) VALUES (?, ?)', 
+                         ('Royal Restaurant', 'royal-restaurant'))
+                conn.commit()
+        except:
+            pass
+        
+        try:
+            c.execute('SELECT COUNT(*) FROM admin_users')
+            if c.fetchone()[0] == 0:
+                c.execute('INSERT INTO admin_users (username, password) VALUES (?, ?)', 
+                         ('admin', 'admin123'))
+                conn.commit()
+        except:
+            pass
+        
+        conn.close()
+        return True
+        
+    except Exception as e:
+        print(f"[WARNING] Database init error: {e}")
+        return False
 
-# Initialize DB on startup
+# Initialize DB on startup (non-blocking)
 try:
-    if not os.path.exists(DB_PATH):
-        init_db()
+    print("[*] Initializing database...")
+    if init_db():
+        print("[OK] Database initialized")
     else:
-        init_db()
+        print("[!] Database init had errors, will retry on first request")
 except Exception as e:
-    print(f"Warning: Database initialization error: {str(e)}")
-    print(f"Attempting to continue - database will be created on first request if needed")
+    print(f"[!] Database startup error (non-fatal): {e}")
+
 
 def get_db():
     """Get database connection - supports both SQLite and PostgreSQL"""
