@@ -875,8 +875,32 @@ def from_json(value):
 
 app.jinja_env.filters['from_json'] = from_json
 
-# Database setup
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'restaurant.db')
+# ============================================================================
+# DATABASE SETUP - PERSISTENT STORAGE FOR RAILWAY DEPLOYMENT
+# ============================================================================
+# IMPORTANT: On Railway, the app directory is ephemeral and gets wiped on redeploy.
+# To keep your data (menus, orders, QR codes, admin data) persistent:
+# 
+# 1. Go to your Railway project dashboard
+# 2. Click on your hotel-app service  
+# 3. Go to "Storage" tab (or "Volumes" in newer Railway UI)
+# 4. Click "Create New"
+# 5. Set Mount Path to: /data
+# 6. Leave size as default (10GB)
+# 7. Deploy - app will now use /data for persistent storage
+#
+# The app automatically detects /data directory if it exists and uses it.
+# Otherwise, it falls back to storing in the app directory (local development).
+# ============================================================================
+
+# Database setup - use persistent storage if available (Railway Disk)
+# Check if /data directory exists (Railway persistent volume)
+if os.path.exists('/data'):
+    db_dir = '/data'
+else:
+    db_dir = os.path.dirname(os.path.abspath(__file__))
+    
+DB_PATH = os.path.join(db_dir, 'restaurant.db')
 
 def init_db():
     """Initialize database - with full error tolerance"""
