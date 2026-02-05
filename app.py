@@ -903,6 +903,7 @@ def init_db():
         # Menu items
         c.execute('''CREATE TABLE IF NOT EXISTS menu_items (
             id INTEGER PRIMARY KEY,
+            hotel_id INTEGER,
             name TEXT,
             category TEXT,
             price REAL,
@@ -942,6 +943,7 @@ def init_db():
         # Orders table
         c.execute('''CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY,
+            hotel_id INTEGER,
             table_id INTEGER,
             table_number INTEGER,
             items TEXT,
