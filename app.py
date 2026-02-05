@@ -918,6 +918,7 @@ def init_db():
             hotel_logo TEXT,
             owner_email TEXT,
             owner_password TEXT,
+            owner_verified INTEGER DEFAULT 0,
             auto_accept_orders INTEGER DEFAULT 0,
             print_name INTEGER DEFAULT 1,
             print_address INTEGER DEFAULT 1,
@@ -1000,6 +1001,12 @@ def init_db():
         # Add columns if they don't exist
         try:
             c.execute('ALTER TABLE settings ADD COLUMN owner_password TEXT')
+            conn.commit()
+        except:
+            pass
+        
+        try:
+            c.execute('ALTER TABLE settings ADD COLUMN owner_verified INTEGER DEFAULT 0')
             conn.commit()
         except:
             pass
