@@ -2004,7 +2004,7 @@ def admin_tables():
             
             # Generate QR code that links to the order page
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
-            qr_url = f"{request.host_url.rstrip('/')}/order/{table_id}"
+            qr_url = f"{request.host_url.rstrip('/')}/order?table={table_number}"
             qr.add_data(qr_url)
             qr.make(fit=True)
             
@@ -2031,7 +2031,7 @@ def admin_tables():
                 font = ImageFont.load_default()
             
             # Draw table number text
-            text = f"TABLE {table_id}"
+            text = f"TABLE {table_number}"
             bbox = draw.textbbox((0, 0), text, font=font)
             text_width = bbox[2] - bbox[0]
             text_x = (qr_size - text_width) // 2
@@ -2044,7 +2044,7 @@ def admin_tables():
                 os.makedirs(qr_dir)
             
             # Save QR code image with table number
-            qr_filename = f"table_{table_id}_qr.png"
+            qr_filename = f"table_{table_number}_qr.png"
             qr_path = os.path.join(qr_dir, qr_filename)
             final_image.save(qr_path)
             
