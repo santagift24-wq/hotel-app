@@ -730,38 +730,51 @@ def check_trial_expiry():
     return len(expired)
 
 def check_account_inactivity():
-    """Check for inactive accounts and delete after 31 days"""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-    
-    now = datetime.now()
-    warning_threshold = now - timedelta(days=INACTIVITY_WARNING_DAYS)
-    delete_threshold = now - timedelta(days=ACCOUNT_DELETE_DAYS)
-    
-    # Find accounts with no payment and subscription expired > 30 days
-    c.execute('''SELECT id, hotel_name, subscription_end_date, last_payment_date, 
-                        inactivity_warning_sent
-                 FROM settings 
-                 WHERE subscription_status IN ("trial_expired", "trial")
-                 AND (last_payment_date IS NULL OR last_payment_date < ?)''',
-             (warning_threshold,))
-    
-    inactive = c.fetchall()
-    
-    for hotel in inactive:
-        if hotel['last_payment_date'] is None or \
-           datetime.fromisoformat(hotel['last_payment_date']) < delete_threshold:
-            # Delete account after 31 days
-            c.execute('DELETE FROM settings WHERE id = ?', (hotel['id'],))
-            c.execute('DELETE FROM orders WHERE hotel_id = ?', (hotel['id'],))
-            c.execute('DELETE FROM menu_items WHERE hotel_id = ?', (hotel['id'],))
-            c.execute('DELETE FROM restaurant_tables WHERE hotel_id = ?', (hotel['id'],))
-            
-            print(f"[DELETED] Deleted inactive account: {hotel['hotel_name']}")
-    
-    conn.commit()
-    conn.close()
+    """Check for inactive accounts and delete after 31 days
+    CRITICAL: Only deletes explicitly trial-expired accounts, NOT new trial accounts"""
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=30)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        now = datetime.now()
+        delete_threshold = now - timedelta(days=ACCOUNT_DELETE_DAYS)
+        
+        # ONLY delete accounts that explicitly expired trial
+        # Do NOT delete new hotels with NULL last_payment_date
+        # Criteria:
+        # 1. subscription_status = 'trial_expired' (explicitly expired, not just 'trial')
+        # 2. AND created_at is more than 31 days old
+        # 3. AND never made a payment (last_payment_date IS NULL)
+        
+        c.execute('''SELECT id, hotel_name, subscription_end_date, last_payment_date, created_at
+                     FROM settings 
+                     WHERE subscription_status = "trial_expired"
+                     AND last_payment_date IS NULL
+                     AND created_at < ?''',
+                 (delete_threshold,))
+        
+        inactive = c.fetchall()
+        
+        if inactive:
+            print(f"[INFO] Found {len(inactive)} expired trial accounts to clean up")
+        
+        for hotel in inactive:
+            try:
+                print(f"[CLEANUP] Deleting expired trial account: {hotel['hotel_name']} (ID: {hotel['id']})")
+                c.execute('DELETE FROM settings WHERE id = ?', (hotel['id'],))
+                c.execute('DELETE FROM orders WHERE hotel_id = ?', (hotel['id'],))
+                c.execute('DELETE FROM menu_items WHERE hotel_id = ?', (hotel['id'],))
+                c.execute('DELETE FROM restaurant_tables WHERE hotel_id = ?', (hotel['id'],))
+            except Exception as e:
+                print(f"[ERROR] Failed to delete hotel {hotel['id']}: {e}")
+        
+        conn.commit()
+        conn.close()
+        return len(inactive)
+    except Exception as e:
+        print(f"[ERROR] Error checking account inactivity: {e}")
+        return 0
 
 # ============================================================================
 # 90-DAY DATA RETENTION & AUTOMATIC DELETION SYSTEM
@@ -974,18 +987,28 @@ def generate_hotel_slug(hotel_name):
     return slug
 
 
-def is_hotel_slug_available(slug):
-    """Check if hotel slug is already taken"""
-    try:
-        conn = get_db()
-        c = conn.cursor()
-        c.execute('SELECT id FROM settings WHERE hotel_slug = ?', (slug.lower(),))
-        result = c.fetchone()
-        conn.close()
-        return result is None
-    except Exception as e:
-        print(f"[WARNING] Error checking hotel slug availability: {e}")
-        return True  # Assume available if database error
+def is_hotel_slug_available(slug, retries=3):
+    """Check if hotel slug is already taken - with retry logic for database locks"""
+    for attempt in range(retries):
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=30)
+            c = conn.cursor()
+            c.execute('SELECT id FROM settings WHERE hotel_slug = ?', (slug.lower(),))
+            result = c.fetchone()
+            conn.close()
+            return result is None  # True if available (no result found)
+        except sqlite3.OperationalError as e:
+            if 'database is locked' in str(e) and attempt < retries - 1:
+                print(f"[WARNING] Database locked checking slug, retrying ({attempt + 1}/{retries})...")
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            else:
+                # On error, return False (assume taken) to be safe rather than creating duplicates
+                print(f"[ERROR] Could not check hotel slug availability: {e}")
+                return False
+        except Exception as e:
+            print(f"[ERROR] Error checking hotel slug availability: {e}")
+            return False
 
 
 # Custom Jinja2 filter for JSON parsing
@@ -1245,6 +1268,18 @@ try:
 except Exception as e:
     print(f"[!] Database startup error (non-fatal): {e}")
 
+# Background tasks - run less frequently to improve performance
+background_tasks_last_run = {'check_inactivity': datetime.now()}
+BACKGROUND_TASK_INTERVAL = 3600  # Run every 1 hour instead of on every request
+
+def should_run_background_tasks():
+    """Check if background tasks should run (every 1 hour)"""
+    now = datetime.now()
+    if (now - background_tasks_last_run.get('check_inactivity', now)).total_seconds() > BACKGROUND_TASK_INTERVAL:
+        background_tasks_last_run['check_inactivity'] = now
+        return True
+    return False
+
 
 def get_db():
     """Get database connection with timeout to prevent 'database is locked' errors"""
@@ -1262,6 +1297,8 @@ def get_db():
             conn.execute('PRAGMA busy_timeout=30000')
             # Allow concurrent reads during writes
             conn.execute('PRAGMA synchronous=NORMAL')
+            # Reduce overhead by using shared cache
+            conn.execute('PRAGMA query_only=FALSE')
         except:
             pass
         return conn
