@@ -826,7 +826,8 @@ def check_trial_expiry():
 
 def check_account_inactivity():
     """Check for inactive accounts and delete after 31 days
-    CRITICAL: Only deletes explicitly trial-expired accounts, NOT new trial accounts"""
+    CRITICAL SAFETY: Only deletes explicitly trial-expired accounts, NOT new trial accounts
+    REQUIRES: subscription_status='trial_expired' AND no previous payments AND 31+ days old"""
     try:
         conn = sqlite3.connect(DB_PATH, timeout=30)
         conn.row_factory = sqlite3.Row
@@ -835,38 +836,58 @@ def check_account_inactivity():
         now = datetime.now()
         delete_threshold = now - timedelta(days=ACCOUNT_DELETE_DAYS)
         
-        # ONLY delete accounts that explicitly expired trial
-        # Do NOT delete new hotels with NULL last_payment_date
-        # Criteria:
-        # 1. subscription_status = 'trial_expired' (explicitly expired, not just 'trial')
-        # 2. AND created_at is more than 31 days old
-        # 3. AND never made a payment (last_payment_date IS NULL)
+        # SAFETY-FIRST QUERIES: Multiple conditions to protect against accidental deletion
+        # 1. subscription_status MUST be 'trial_expired' (not just 'trial')
+        # 2. MUST have NO previous payments (last_payment_date IS NULL)
+        # 3. MUST be older than ACCOUNT_DELETE_DAYS (31 days by default)
+        # 4. is_active MUST be 0 (account was explicitly deactivated)
         
-        c.execute('''SELECT id, hotel_name, subscription_end_date, last_payment_date, created_at
+        c.execute('''SELECT id, hotel_name, subscription_end_date, last_payment_date, created_at, subscription_status
                      FROM settings 
                      WHERE subscription_status = "trial_expired"
                      AND last_payment_date IS NULL
-                     AND created_at < ?''',
+                     AND created_at < ?
+                     AND is_active = 0''',
                  (delete_threshold,))
         
         inactive = c.fetchall()
         
         if inactive:
-            print(f"[INFO] Found {len(inactive)} expired trial accounts to clean up")
+            print(f"\n[CLEANUP] ========== ACCOUNT INACTIVITY CHECK ==========")
+            print(f"[CLEANUP] Found {len(inactive)} expired trial accounts eligible for deletion")
+            print(f"[CLEANUP] Criteria: status='trial_expired' + no payments + 31+ days old + is_active=0")
         
+        deleted_count = 0
         for hotel in inactive:
             try:
-                print(f"[CLEANUP] Deleting expired trial account: {hotel['hotel_name']} (ID: {hotel['id']})")
-                c.execute('DELETE FROM settings WHERE id = ?', (hotel['id'],))
-                c.execute('DELETE FROM orders WHERE hotel_id = ?', (hotel['id'],))
-                c.execute('DELETE FROM menu_items WHERE hotel_id = ?', (hotel['id'],))
-                c.execute('DELETE FROM restaurant_tables WHERE hotel_id = ?', (hotel['id'],))
+                # Final confirmation: re-check ALL conditions before deletion
+                c.execute('''SELECT id FROM settings 
+                            WHERE id = ? 
+                            AND subscription_status = "trial_expired"
+                            AND last_payment_date IS NULL
+                            AND created_at < ?
+                            AND is_active = 0''',
+                         (hotel['id'], delete_threshold))
+                
+                if c.fetchone():
+                    print(f"[CLEANUP] Deleting expired trial: {hotel['hotel_name']} (ID: {hotel['id']}) - Status verified")
+                    c.execute('DELETE FROM settings WHERE id = ?', (hotel['id'],))
+                    c.execute('DELETE FROM orders WHERE hotel_id = ?', (hotel['id'],))
+                    c.execute('DELETE FROM menu_items WHERE hotel_id = ?', (hotel['id'],))
+                    c.execute('DELETE FROM restaurant_tables WHERE hotel_id = ?', (hotel['id'],))
+                    deleted_count += 1
+                else:
+                    print(f"[WARNING] Hotel {hotel['id']} no longer meets deletion criteria - SKIPPED")
             except Exception as e:
                 print(f"[ERROR] Failed to delete hotel {hotel['id']}: {e}")
         
-        conn.commit()
+        if deleted_count > 0:
+            conn.commit()
+            print(f"[CLEANUP] Successfully deleted {deleted_count} accounts")
+            print(f"[CLEANUP] ========== END INACTIVITY CHECK ==========\n")
+        
         conn.close()
-        return len(inactive)
+        return deleted_count
     except Exception as e:
         print(f"[ERROR] Error checking account inactivity: {e}")
         return 0
@@ -1441,9 +1462,12 @@ def admin_login():
     """Admin login - supports both email and username login"""
     try:
         if request.method == 'POST':
-            email_or_username = request.form.get('email_or_username')
-            password = request.form.get('password')
+            email_or_username = request.form.get('email_or_username', '').strip()
+            password = request.form.get('password', '').strip()
             login_type = request.form.get('login_type', 'email')  # 'email' or 'username'
+            
+            if not email_or_username or not password:
+                return render_template('admin/login.html', error='invalid_credentials')
             
             conn = get_db()
             c = conn.cursor()
@@ -1593,9 +1617,11 @@ def signup():
         # Create new hotel record with initial status
         hashed_password = generate_password_hash(password)
         try:
-            c.execute('''INSERT INTO settings (hotel_name, hotel_slug, owner_email, owner_password, owner_verified)
-                         VALUES (?, ?, ?, ?, 0)''',
-                      (hotel_name, hotel_slug, email, hashed_password))
+            # Set trial end date to 7 days from now
+            trial_end = datetime.now() + timedelta(days=7)
+            c.execute('''INSERT INTO settings (hotel_name, hotel_slug, owner_email, owner_password, owner_verified, subscription_status, trial_ends_at, is_active)
+                         VALUES (?, ?, ?, ?, 0, ?, ?, 1)''',
+                      (hotel_name, hotel_slug, email, hashed_password, 'trial', trial_end))
             conn.commit()
             conn.close()
             
