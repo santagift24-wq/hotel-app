@@ -519,8 +519,11 @@
                     <a href="{{ url_for('admin_settings') }}" class="profile-menu-item" onclick="closeProfileMenu()">
                         ⚙️ Settings
                     </a>
-                    <a href="{{ url_for('admin_profile') }}" class="profile-menu-item" onclick="closeProfileMenu()">
-                        🏢 Restaurant Profile
+                    <a href="{{ url_for('store_profile_page') }}" class="profile-menu-item" onclick="closeProfileMenu()">
+                        🏪 Store Profile
+                    </a>
+                    <a href="{{ url_for('table_management_page') }}" class="profile-menu-item" onclick="closeProfileMenu()">
+                        📋 Table Setup
                     </a>
                     <a href="{{ url_for('admin_dashboard') }}" class="profile-menu-item" onclick="closeProfileMenu()">
                         📊 Dashboard
@@ -550,8 +553,12 @@
             <ul>
                 <li><a href="{{ url_for('admin_dashboard') }}" class="active">Dashboard</a></li>
                 <li><a href="{{ url_for('admin_tables') }}">Tables & QR</a></li>
+                <li><a href="{{ url_for('table_management_page') }}">📋 Table Setup</a></li>
                 <li><a href="{{ url_for('admin_menu') }}">Menu</a></li>
                 <li><a href="{{ url_for('admin_orders') }}">Orders</a></li>
+                <li><a href="{{ url_for('store_profile_page') }}" style="background: linear-gradient(to right, #FF6B6B, #FF8E8E); color: white; font-weight: bold;">
+                    🏪 Store Profile
+                </a></li>
                 <li><a href="{{ url_for('manage_subadmins') }}">Sub-Admins</a></li>
                 <li><a href="{{ url_for('admin_settings') }}">Settings</a></li>
                 <li><a href="{{ url_for('subscription') }}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold;">

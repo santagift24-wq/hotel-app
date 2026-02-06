@@ -1314,6 +1314,81 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''')
         
+        # Store profiles (extended information about each restaurant)
+        c.execute('''CREATE TABLE IF NOT EXISTS store_profiles (
+            id INTEGER PRIMARY KEY,
+            hotel_id INTEGER UNIQUE,
+            phone_number TEXT,
+            store_email TEXT,
+            street_address TEXT,
+            city TEXT,
+            state TEXT,
+            postal_code TEXT,
+            country TEXT,
+            latitude REAL,
+            longitude REAL,
+            open_time TEXT,
+            close_time TEXT,
+            working_days TEXT,
+            holiday_dates TEXT,
+            store_description TEXT,
+            cuisine_type TEXT,
+            average_rating REAL DEFAULT 0,
+            total_reviews INTEGER DEFAULT 0,
+            logo_url TEXT,
+            banner_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Photo gallery for each store
+        c.execute('''CREATE TABLE IF NOT EXISTS store_gallery (
+            id INTEGER PRIMARY KEY,
+            hotel_id INTEGER,
+            photo_url TEXT,
+            photo_title TEXT,
+            photo_description TEXT,
+            display_order INTEGER DEFAULT 0,
+            is_featured INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Store website templates and customization
+        c.execute('''CREATE TABLE IF NOT EXISTS store_websites (
+            id INTEGER PRIMARY KEY,
+            hotel_id INTEGER UNIQUE,
+            website_theme TEXT DEFAULT 'default',
+            website_title TEXT,
+            website_description TEXT,
+            website_color TEXT,
+            enable_online_ordering INTEGER DEFAULT 1,
+            enable_reservations INTEGER DEFAULT 0,
+            enable_delivery INTEGER DEFAULT 0,
+            header_text TEXT,
+            footer_text TEXT,
+            custom_css TEXT,
+            is_published INTEGER DEFAULT 0,
+            published_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Enhanced table management with more details
+        c.execute('''CREATE TABLE IF NOT EXISTS table_details (
+            id INTEGER PRIMARY KEY,
+            hotel_id INTEGER,
+            table_number INTEGER,
+            table_section TEXT,
+            capacity INTEGER DEFAULT 4,
+            is_active INTEGER DEFAULT 1,
+            qr_code_url TEXT,
+            table_status TEXT DEFAULT 'available',
+            assigned_waiter TEXT,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
         conn.commit()
         
         # Add columns if they don't exist
@@ -3291,7 +3366,301 @@ if __name__ == '__main__':
                 'message': 'Diagnostics check failed'
             }), 500
     
+    # ============================================================================
+    # STORE MANAGEMENT API ROUTES
+    # ============================================================================
+    
+    @app.route('/store-profile')
+    def store_profile_page():
+        """Display store profile management page"""
+        if 'admin_email' not in session and 'admin_id' not in session:
+            return redirect(url_for('admin_login'))
+        
+        return render_template('admin/store_profile.html')
+    
+    @app.route('/table-management')
+    def table_management_page():
+        """Display table management page"""
+        if 'admin_email' not in session and 'admin_id' not in session:
+            return redirect(url_for('admin_login'))
+        
+        return render_template('admin/table_management.html')
+    
+    @app.route('/api/update-store-profile', methods=['POST'])
+    def update_store_profile():
+        """Update store profile information"""
+        try:
+            hotel_id = get_current_hotel_id()
+            if not hotel_id:
+                return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+            
+            section = request.form.get('section')
+            conn = get_db()
+            c = conn.cursor()
+            
+            if section == 'basic':
+                # Update hotel settings
+                c.execute('''UPDATE settings 
+                            SET hotel_name = ?, hotel_address = ?, 
+                                updated_at = CURRENT_TIMESTAMP
+                            WHERE id = ?''',
+                         (request.form.get('store_name'), 
+                          request.form.get('street_address'),
+                          hotel_id))
+                
+                # Update or insert store profile
+                c.execute('''INSERT OR REPLACE INTO store_profiles 
+                            (hotel_id, phone_number, store_email, street_address, city, 
+                             state, postal_code, cuisine_type, store_description)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                         (hotel_id,
+                          request.form.get('phone_number'),
+                          request.form.get('store_email'),
+                          request.form.get('street_address'),
+                          request.form.get('city'),
+                          request.form.get('state'),
+                          request.form.get('postal_code'),
+                          request.form.get('cuisine_type'),
+                          request.form.get('store_description')))
+            
+            elif section == 'hours':
+                c.execute('''UPDATE store_profiles 
+                            SET open_time = ?, close_time = ?, 
+                                working_days = ?, holiday_dates = ?
+                            WHERE hotel_id = ?''',
+                         (request.form.get('open_time'),
+                          request.form.get('close_time'),
+                          request.form.get('working_days'),
+                          request.form.get('holiday_dates'),
+                          hotel_id))
+            
+            elif section == 'appearance':
+                c.execute('''INSERT OR REPLACE INTO store_websites 
+                            (hotel_id, website_theme, website_color, 
+                             website_title, website_description)
+                            VALUES (?, ?, ?, ?, ?)''',
+                         (hotel_id,
+                          request.form.get('website_theme'),
+                          request.form.get('website_color'),
+                          request.form.get('website_title'),
+                          request.form.get('website_description')))
+            
+            conn.commit()
+            conn.close()
+            return jsonify({'success': True})
+        
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+    
+    @app.route('/api/upload-store-photos', methods=['POST'])
+    def upload_store_photos():
+        """Upload photos to store gallery"""
+        try:
+            hotel_id = get_current_hotel_id()
+            if not hotel_id:
+                return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+            
+            conn = get_db()
+            c = conn.cursor()
+            
+            if 'photos' not in request.files:
+                return jsonify({'success': False, 'error': 'No photos provided'})
+            
+            files = request.files.getlist('photos')
+            uploaded = []
+            
+            for file in files:
+                if file and file.filename != '':
+                    # Save file
+                    filename = f"store_{hotel_id}_{int(time.time())}_{file.filename}"
+                    filepath = os.path.join('static/store_photos', filename)
+                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                    file.save(filepath)
+                    
+                    # Add to gallery
+                    c.execute('''INSERT INTO store_gallery 
+                                (hotel_id, photo_url, photo_title)
+                                VALUES (?, ?, ?)''',
+                             (hotel_id, f'/{filepath}', file.filename))
+                    uploaded.append(file.filename)
+            
+            conn.commit()
+            conn.close()
+            return jsonify({'success': True, 'uploaded': len(uploaded)})
+        
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+    
+    @app.route('/api/get-store-photos')
+    def get_store_photos():
+        """Get store photo gallery"""
+        try:
+            hotel_id = get_current_hotel_id()
+            if not hotel_id:
+                return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+            
+            conn = get_db()
+            c = conn.cursor()
+            c.execute('SELECT * FROM store_gallery WHERE hotel_id = ? ORDER BY display_order DESC',
+                     (hotel_id,))
+            
+            photos = []
+            for row in c.fetchall():
+                photos.append({
+                    'id': row['id'],
+                    'photo_url': row['photo_url'],
+                    'photo_title': row['photo_title'],
+                    'is_featured': row['is_featured']
+                })
+            
+            conn.close()
+            return jsonify({'success': True, 'photos': photos})
+        
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+    
+    @app.route('/api/get-tables')
+    def get_tables():
+        """Get all tables for current hotel"""
+        try:
+            hotel_id = get_current_hotel_id()
+            if not hotel_id:
+                return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+            
+            conn = get_db()
+            c = conn.cursor()
+            c.execute('''SELECT * FROM table_details WHERE hotel_id = ? 
+                        ORDER BY table_number''', (hotel_id,))
+            
+            tables = []
+            for row in c.fetchall():
+                tables.append({
+                    'id': row['id'],
+                    'table_number': row['table_number'],
+                    'table_section': row['table_section'],
+                    'capacity': row['capacity'],
+                    'table_status': row['table_status'],
+                    'assigned_waiter': row['assigned_waiter'],
+                    'notes': row['notes']
+                })
+            
+            conn.close()
+            return jsonify({'success': True, 'tables': tables})
+        
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+    
+    @app.route('/api/save-table', methods=['POST'])
+    def save_table():
+        """Save or update a table"""
+        try:
+            hotel_id = get_current_hotel_id()
+            if not hotel_id:
+                return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+            
+            data = request.get_json()
+            conn = get_db()
+            c = conn.cursor()
+            
+            if data.get('id'):
+                # Update existing table
+                c.execute('''UPDATE table_details 
+                            SET table_section = ?, capacity = ?, 
+                                table_status = ?, assigned_waiter = ?, notes = ?
+                            WHERE id = ? AND hotel_id = ?''',
+                         (data.get('table_section'), data.get('capacity'),
+                          data.get('table_status'), data.get('assigned_waiter'),
+                          data.get('notes'), data.get('id'), hotel_id))
+            else:
+                # Insert new table
+                c.execute('''INSERT INTO table_details 
+                            (hotel_id, table_number, table_section, capacity, 
+                             table_status, assigned_waiter, notes)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                         (hotel_id, data.get('table_number'), 
+                          data.get('table_section'), data.get('capacity'),
+                          data.get('table_status'), data.get('assigned_waiter'),
+                          data.get('notes')))
+            
+            conn.commit()
+            conn.close()
+            return jsonify({'success': True})
+        
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+    
+    @app.route('/order')
+    def customer_order_page():
+        """Customer order page (what they see after scanning QR)"""
+        return render_template('customer_order.html')
+    
+    @app.route('/api/get-store-info')
+    def get_store_info():
+        """Get store information for customer order page"""
+        try:
+            hotel_slug = request.args.get('hotel', 'default')
+            
+            conn = get_db()
+            c = conn.cursor()
+            c.execute('''SELECT s.*, sp.phone_number, sp.store_email, 
+                                sp.street_address
+                        FROM settings s
+                        LEFT JOIN store_profiles sp ON s.id = sp.hotel_id
+                        WHERE s.hotel_slug = ?''', (hotel_slug,))
+            
+            store = c.fetchone()
+            conn.close()
+            
+            if not store:
+                return jsonify({'success': False, 'error': 'Store not found'})
+            
+            return jsonify({'success': True, 'store': {
+                'id': store['id'],
+                'hotel_name': store['hotel_name'],
+                'address': store['street_address'],
+                'phone': store['phone_number'],
+                'logo': store['hotel_logo']
+            }})
+        
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+    
+    @app.route('/api/place-order', methods=['POST'])
+    def place_order_api():
+        """Place a new order from customer"""
+        try:
+            data = request.get_json()
+            
+            conn = get_db()
+            c = conn.cursor()
+            
+            # Get hotel ID from slug
+            c.execute('SELECT id FROM settings WHERE hotel_slug = ?', 
+                     (data.get('hotel_slug'),))
+            hotel = c.fetchone()
+            
+            if not hotel:
+                return jsonify({'success': False, 'error': 'Hotel not found'})
+            
+            # Create order
+            c.execute('''INSERT INTO orders 
+                        (hotel_id, table_number, items, subtotal, tax, total, status)
+                        VALUES (?, ?, ?, ?, ?, ?, 'pending')''',
+                     (hotel['id'], data.get('table_number'),
+                      data.get('items'), data.get('subtotal'),
+                      data.get('tax'), data.get('total')))
+            
+            conn.commit()
+            order_id = c.lastrowid
+            conn.close()
+            
+            return jsonify({'success': True, 'order_id': order_id})
+        
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+    
     print("[INFO] Starting Flask server...")
+
     port = int(os.environ.get('PORT', 5000))
     try:
         app.run(debug=False, port=port, host='0.0.0.0', threaded=True)
