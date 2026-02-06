@@ -653,7 +653,7 @@ def create_razorpay_order(hotel_id, hotel_name, plan):
         return None, str(e)
 
 def verify_razorpay_payment(order_id, payment_id, signature, hotel_id):
-    """Verify Razorpay payment signature"""
+    """Verify Razorpay payment signature and log payment"""
     try:
         import hashlib
         import hmac
@@ -670,12 +670,43 @@ def verify_razorpay_payment(order_id, payment_id, signature, hotel_id):
         
         # Compare signatures
         if generated_signature == signature:
-            return True, "Payment verified"
+            # Log successful verification
+            conn = sqlite3.connect(DB_PATH, timeout=30)
+            c = conn.cursor()
+            c.execute('''INSERT INTO payments (order_id, payment_id, amount, status, created_at)
+                         VALUES (?, ?, 0, "verified", datetime("now"))''',
+                     (order_id, payment_id))
+            conn.commit()
+            conn.close()
+            return True, "Payment verified successfully"
         else:
+            print(f"[ERROR] Payment signature mismatch for order {order_id}")
             return False, "Payment signature mismatch"
     
     except Exception as e:
+        print(f"[ERROR] Payment verification error: {str(e)}")
         return False, str(e)
+
+def check_existing_subscription(hotel_id):
+    """Check if hotel already has an active/paid subscription"""
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    
+    c.execute('''SELECT subscription_status, subscription_plan, subscription_end_date, is_active
+                 FROM settings WHERE id = ? AND subscription_status = "active"''', (hotel_id,))
+    
+    result = c.fetchone()
+    conn.close()
+    
+    if result:
+        # Check if subscription end date has passed
+        if result['subscription_end_date']:
+            sub_ends = datetime.fromisoformat(result['subscription_end_date'])
+            if datetime.now() < sub_ends:
+                return True, result['subscription_plan']  # Active subscription exists
+    
+    return False, None
 
 def activate_subscription(hotel_id, plan, payment_id=None):
     """Activate subscription for hotel after payment"""
@@ -2850,11 +2881,20 @@ def subscription():
     """Subscription plans page"""
     hotel_id = session.get('hotel_id')
     subscription_status = None
+    has_active_subscription = False
     
     if hotel_id:
         subscription_status = get_subscription_status(hotel_id)
+        has_active_subscription = is_subscription_active(hotel_id)
+        
+        print(f"[DEBUG] Hotel {hotel_id} subscription status: {subscription_status}")
+        print(f"[DEBUG] Active: {has_active_subscription}")
     
-    return render_template('admin/subscription.html', current_status=subscription_status, plans=SUBSCRIPTION_PLANS)
+    return render_template('admin/subscription.html', 
+                         current_status=subscription_status,
+                         has_active_subscription=has_active_subscription,
+                         plans=SUBSCRIPTION_PLANS,
+                         razorpay_key_id=RAZORPAY_KEY_ID)
 
 @app.route('/about')
 def about():
@@ -2910,57 +2950,153 @@ def api_create_order():
         return jsonify({'success': False, 'message': 'Invalid plan'}), 400
     
     try:
-        order_response = create_razorpay_order(hotel_id, session.get('hotel_name', 'Hotel'), plan)
+        # Check if hotel already has an active subscription
+        has_active_sub, existing_plan = check_existing_subscription(hotel_id)
+        if has_active_sub:
+            print(f"[WARNING] Hotel {hotel_id} already has active {existing_plan} subscription")
+            return jsonify({
+                'success': False, 
+                'message': f'Your hotel already has an active {existing_plan} subscription (Expires {datetime.now().strftime("%Y-%m-%d")}). You cannot subscribe again until it expires. If you want to upgrade, please contact support.',
+                'existing_subscription': True,
+                'existing_plan': existing_plan
+            }), 400
         
-        if order_response:
+        print(f"[OK] Creating Razorpay order for hotel {hotel_id} - {plan} plan")
+        order_response, error = create_razorpay_order(hotel_id, session.get('hotel_name', 'Hotel'), plan)
+        
+        if order_response and order_response.get('id'):
+            print(f"[OK] Order created: {order_response.get('id')}")
             return jsonify({
                 'success': True,
                 'order_id': order_response.get('id'),
                 'amount': order_response.get('amount'),
                 'currency': order_response.get('currency'),
-                'key_id': os.getenv('RAZORPAY_KEY_ID')
-            })
+                'key_id': RAZORPAY_KEY_ID
+            }), 200
         else:
-            return jsonify({'success': False, 'message': 'Failed to create order'}), 500
+            print(f"[ERROR] Failed to create order: {error}")
+            return jsonify({'success': False, 'message': f'Failed to create order: {error}'}), 500
     
     except Exception as e:
         print(f"[ERROR] Error creating order: {str(e)}")
-        return jsonify({'success': False, 'message': 'Error creating order'}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error creating order: {str(e)}'}), 500
 
 @app.route('/api/verify-payment', methods=['POST'])
 def api_verify_payment():
     """Verify Razorpay payment and activate subscription"""
     if 'hotel_id' not in session:
+        print("[ERROR] No hotel_id in session for payment verification")
         return jsonify({'success': False, 'message': 'Not authenticated'}), 401
     
     hotel_id = session['hotel_id']
     
     try:
-        order_id = request.json.get('order_id')
-        payment_id = request.json.get('payment_id')
-        signature = request.json.get('signature')
-        plan = request.json.get('plan')
+        data = request.json
+        order_id = data.get('order_id')
+        payment_id = data.get('payment_id')
+        signature = data.get('signature')
+        plan = data.get('plan')
+        
+        # Validate inputs
+        if not all([order_id, payment_id, signature, plan]):
+            print(f"[ERROR] Missing payment data for hotel {hotel_id}")
+            return jsonify({'success': False, 'message': 'Missing payment information'}), 400
+        
+        if plan not in SUBSCRIPTION_PLANS:
+            print(f"[ERROR] Invalid plan '{plan}' requested by hotel {hotel_id}")
+            return jsonify({'success': False, 'message': 'Invalid subscription plan'}), 400
+        
+        # Check if hotel already has an active subscription
+        has_active_sub, existing_plan = check_existing_subscription(hotel_id)
+        if has_active_sub:
+            print(f"[WARNING] Hotel {hotel_id} already has active {existing_plan} subscription")
+            return jsonify({
+                'success': False, 
+                'message': f'Your hotel already has an active {existing_plan} subscription. Please wait for it to expire or contact support to upgrade.',
+                'existing_plan': existing_plan
+            }), 400
         
         # Verify payment with Razorpay
-        verification = verify_razorpay_payment(order_id, payment_id, signature, hotel_id)
+        is_verified, verification_message = verify_razorpay_payment(order_id, payment_id, signature, hotel_id)
         
-        if verification['success']:
-            # Activate subscription
-            activate_subscription(hotel_id, plan, payment_id)
+        if is_verified:
+            print(f"[OK] Payment verified for hotel {hotel_id} - activating {plan} subscription")
             
-            return jsonify({
-                'success': True,
-                'message': 'Payment verified and subscription activated!'
-            })
+            # Activate subscription
+            success = activate_subscription(hotel_id, plan, payment_id)
+            
+            if success:
+                print(f"[OK] Subscription activated for hotel {hotel_id}")
+                return jsonify({
+                    'success': True,
+                    'message': f'Payment successful! Your {plan.capitalize()} subscription is now active! 🎉',
+                    'plan': plan,
+                    'order_id': order_id,
+                    'payment_id': payment_id
+                }), 200
+            else:
+                print(f"[ERROR] Failed to activate subscription for hotel {hotel_id}")
+                return jsonify({
+                    'success': False, 
+                    'message': 'Payment verified but failed to activate subscription. Please contact support.',
+                    'order_id': order_id,
+                    'payment_id': payment_id
+                }), 500
         else:
+            print(f"[ERROR] Payment verification failed for hotel {hotel_id}: {verification_message}")
             return jsonify({
                 'success': False,
-                'message': verification.get('message', 'Payment verification failed')
+                'message': f'Payment verification failed: {verification_message}',
+                'order_id': order_id
             }), 400
     
     except Exception as e:
         print(f"[ERROR] Error verifying payment: {str(e)}")
-        return jsonify({'success': False, 'message': 'Error verifying payment'}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error processing payment: {str(e)}'}), 500
+
+@app.route('/api/subscription-status', methods=['GET'])
+def api_subscription_status():
+    """Get current subscription status for the hotel"""
+    if 'hotel_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    try:
+        hotel_id = session['hotel_id']
+        status = get_subscription_status(hotel_id)
+        is_active = is_subscription_active(hotel_id)
+        
+        if not status:
+            return jsonify({
+                'success': True,
+                'has_subscription': False,
+                'message': 'No subscription found'
+            }), 200
+        
+        response_data = {
+            'success': True,
+            'has_subscription': True,
+            'is_active': is_active,
+            'current_status': status['status'],
+            'plan': status['plan'],
+            'last_payment_date': status['last_payment_date'],
+            'active_until': status['subscription_end_date'] if status['status'] == 'active' else status['trial_ends_at']
+        }
+        
+        # Add days remaining
+        if status['subscription_end_date']:
+            end_date = datetime.fromisoformat(status['subscription_end_date'])
+            days_remaining = (end_date - datetime.now()).days
+            response_data['days_remaining'] = max(0, days_remaining)
+        
+        return jsonify(response_data), 200
+    
+    except Exception as e:
+        print(f"[ERROR] Error getting subscription status: {str(e)}")
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
 
 # ============================================================================
 # DATA RETENTION & MANAGEMENT ROUTES
