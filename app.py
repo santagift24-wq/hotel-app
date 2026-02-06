@@ -2727,6 +2727,49 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"[WARNING] Failed to start daily deletion scheduler: {e}")
     
+    # Add diagnostic endpoint
+    @app.route('/api/system-diagnostics', methods=['GET'])
+    def system_diagnostics():
+        """
+        Diagnostic endpoint to check database persistence status.
+        Accessible via: /api/system-diagnostics
+        
+        Returns:
+        - database_path: Where the database file is stored
+        - persistent_storage: Whether /data volume is detected
+        - database_exists: Whether database.db file exists
+        - database_size_kb: Size of database file
+        - writable: Whether we can write to database
+        - is_production: Whether running on Railway
+        """
+        try:
+            db_exists = os.path.exists(DB_PATH)
+            writable = verify_db_writable() if db_exists else False
+            
+            db_size = 0
+            if db_exists:
+                db_size = os.path.getsize(DB_PATH) / 1024
+            
+            env = os.environ.get('PORT')  # If PORT is set, likely on Railway
+            
+            return jsonify({
+                'timestamp': datetime.now().isoformat(),
+                'database_path': DB_PATH,
+                'database_exists': db_exists,
+                'database_size_kb': round(db_size, 2),
+                'persistent_storage_enabled': USING_PERSISTENT_STORAGE,
+                'writable': writable,
+                'is_production': env is not None,
+                'app_directory': os.path.dirname(os.path.abspath(__file__)),
+                'data_volume_exists': os.path.exists('/data'),
+                'message': 'YES - Data persists' if USING_PERSISTENT_STORAGE else 'NO - Data will be lost on redeploy (add /data volume)'
+            })
+        except Exception as e:
+            return jsonify({
+                'error': str(e),
+                'message': 'Diagnostics check failed'
+            }), 500
+    
     print("[INFO] Starting Flask server...")
     port = int(os.environ.get('PORT', 5000))
     try:
