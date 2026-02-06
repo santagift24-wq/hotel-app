@@ -259,7 +259,17 @@
     <div class="admin-header">
         <h1>🏨 Admin Dashboard</h1>
         <div class="user-info">
-            <span>Welcome, <strong>{{ session.admin_username }}</strong></span>
+            <span>Welcome, <strong>
+                {% if session.admin_email %}
+                    {{ session.admin_email }}
+                {% elif session.admin_username %}
+                    {{ session.admin_username }}
+                {% elif session.subadmin_username %}
+                    {{ session.subadmin_username }}
+                {% else %}
+                    Admin
+                {% endif %}
+            </strong></span>
             <a href="{{ url_for('admin_logout') }}" class="logout-btn">Logout</a>
         </div>
     </div>

@@ -296,12 +296,36 @@
         <h1>🏨 Admin - Menu</h1>
         <div class="profile-dropdown">
             <div class="profile-circle" onclick="toggleProfileMenu()">
-                {{ session.admin_username[0]|upper }}
+                {% if session.admin_email %}
+                    {{ session.admin_email[0]|upper }}
+                {% elif session.admin_username %}
+                    {{ session.admin_username[0]|upper }}
+                {% elif session.subadmin_username %}
+                    {{ session.subadmin_username[0]|upper }}
+                {% else %}
+                    A
+                {% endif %}
             </div>
             <div class="profile-menu" id="profileMenu">
                 <div class="profile-menu-header">
-                    <p>{{ session.admin_username }}</p>
-                    <small>Admin Account</small>
+                    <p>
+                        {% if session.admin_email %}
+                            {{ session.admin_email }}
+                        {% elif session.admin_username %}
+                            {{ session.admin_username }}
+                        {% elif session.subadmin_username %}
+                            {{ session.subadmin_username }}
+                        {% else %}
+                            Admin
+                        {% endif %}
+                    </p>
+                    <small>
+                        {% if session.subadmin_username %}
+                            Sub-Admin Account
+                        {% else %}
+                            Admin Account
+                        {% endif %}
+                    </small>
                 </div>
                 <a href="{{ url_for('admin_settings') }}" class="profile-menu-item" onclick="closeProfileMenu()">
                     ⚙️ Settings
