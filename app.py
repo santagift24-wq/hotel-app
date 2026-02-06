@@ -162,54 +162,99 @@ def generate_otp():
     """Generate 6-digit OTP"""
     return ''.join(random.choices(string.digits, k=6))
 
-def save_otp(email, otp_code):
-    """Save OTP to database"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    expires_at = datetime.now() + timedelta(minutes=10)
-    
-    c.execute('DELETE FROM otp_tokens WHERE owner_email = ?', (email,))
-    c.execute('''INSERT INTO otp_tokens (owner_email, otp_code, expires_at) 
-                 VALUES (?, ?, ?)''', (email, otp_code, expires_at))
-    
-    conn.commit()
-    conn.close()
-    return True
+def save_otp(email, otp_code, retries=3):
+    """Save OTP to database with retry logic for locked database"""
+    for attempt in range(retries):
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=30)
+            c = conn.cursor()
+            expires_at = datetime.now() + timedelta(minutes=10)
+            
+            c.execute('DELETE FROM otp_tokens WHERE owner_email = ?', (email,))
+            c.execute('''INSERT INTO otp_tokens (owner_email, otp_code, expires_at) 
+                         VALUES (?, ?, ?)''', (email, otp_code, expires_at))
+            
+            conn.commit()
+            conn.close()
+            return True
+        except sqlite3.OperationalError as e:
+            if 'database is locked' in str(e) and attempt < retries - 1:
+                print(f"[WARNING] Database locked on OTP save, retrying ({attempt + 1}/{retries})...")
+                time.sleep(0.5 * (attempt + 1))  # Exponential backoff
+                continue
+            else:
+                print(f"[ERROR] Failed to save OTP after {retries} attempts: {e}")
+                return False
+        except Exception as e:
+            print(f"[ERROR] Error saving OTP: {e}")
+            return False
 
-def check_otp(email, otp_code):
-    """Verify OTP"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    c.execute('''SELECT * FROM otp_tokens 
-                 WHERE owner_email = ? AND otp_code = ? AND is_used = 0 
-                 AND expires_at > datetime('now')''', (email, otp_code))
-    
-    result = c.fetchone()
-    conn.close()
-    
-    return result is not None
+def check_otp(email, otp_code, retries=3):
+    """Verify OTP with retry logic"""
+    for attempt in range(retries):
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=30)
+            c = conn.cursor()
+            
+            c.execute('''SELECT * FROM otp_tokens 
+                         WHERE owner_email = ? AND otp_code = ? AND is_used = 0 
+                         AND expires_at > datetime('now')''', (email, otp_code))
+            
+            result = c.fetchone()
+            conn.close()
+            
+            return result is not None
+        except sqlite3.OperationalError as e:
+            if 'database is locked' in str(e) and attempt < retries - 1:
+                print(f"[WARNING] Database locked on OTP check, retrying ({attempt + 1}/{retries})...")
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            else:
+                print(f"[ERROR] Failed to check OTP after {retries} attempts: {e}")
+                return False
 
-def mark_otp_used(email):
-    """Mark OTP as used"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    c.execute('UPDATE otp_tokens SET is_used = 1 WHERE owner_email = ? AND is_used = 0',
-              (email,))
-    
-    conn.commit()
-    conn.close()
+def mark_otp_used(email, retries=3):
+    """Mark OTP as used with retry logic"""
+    for attempt in range(retries):
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=30)
+            c = conn.cursor()
+            
+            c.execute('UPDATE otp_tokens SET is_used = 1 WHERE owner_email = ? AND is_used = 0',
+                      (email,))
+            
+            conn.commit()
+            conn.close()
+            return True
+        except sqlite3.OperationalError as e:
+            if 'database is locked' in str(e) and attempt < retries - 1:
+                print(f"[WARNING] Database locked on OTP mark, retrying ({attempt + 1}/{retries})...")
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            else:
+                print(f"[ERROR] Failed to mark OTP as used after {retries} attempts: {e}")
+                return False
 
-def mark_email_verified(email):
-    """Mark email as verified in settings"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    c.execute('UPDATE settings SET owner_verified = 1 WHERE owner_email = ?', (email,))
-    
-    conn.commit()
-    conn.close()
+def mark_email_verified(email, retries=3):
+    """Mark email as verified in settings with retry logic"""
+    for attempt in range(retries):
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=30)
+            c = conn.cursor()
+            
+            c.execute('UPDATE settings SET owner_verified = 1 WHERE owner_email = ?', (email,))
+            
+            conn.commit()
+            conn.close()
+            return True
+        except sqlite3.OperationalError as e:
+            if 'database is locked' in str(e) and attempt < retries - 1:
+                print(f"[WARNING] Database locked on email verification, retrying ({attempt + 1}/{retries})...")
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            else:
+                print(f"[ERROR] Failed to mark email verified after {retries} attempts: {e}")
+                return False
 
 
 def generate_daily_report_pdf(hotel_id, hotel_name, owner_email):
@@ -998,7 +1043,15 @@ print(f"[DATABASE] Persistent storage exists: {os.path.exists('/data') or os.pat
 def init_db():
     """Initialize database - with full error tolerance"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, timeout=30)
+        # Enable WAL mode and concurrency settings
+        c = conn.cursor()
+        c.execute('PRAGMA journal_mode=WAL')
+        c.execute('PRAGMA busy_timeout=30000')
+        c.execute('PRAGMA synchronous=NORMAL')
+        conn.commit()
+        c.close()
+        conn = sqlite3.connect(DB_PATH, timeout=30)
         c = conn.cursor()
         
         # Admin users table
@@ -1194,13 +1247,23 @@ except Exception as e:
 
 
 def get_db():
-    """Get database connection - supports both SQLite and PostgreSQL"""
+    """Get database connection with timeout to prevent 'database is locked' errors"""
     if USE_POSTGRES:
         conn = psycopg2.connect(**DB_CONFIG, cursor_factory=RealDictCursor)
         return conn
     else:
-        conn = sqlite3.connect(DB_PATH)
+        # Set timeout to 30 seconds to handle concurrent access
+        conn = sqlite3.connect(DB_PATH, timeout=30)
         conn.row_factory = sqlite3.Row
+        # Enable WAL mode for better concurrency (only once)
+        try:
+            conn.execute('PRAGMA journal_mode=WAL')
+            # Set busy timeout in milliseconds (30 seconds)
+            conn.execute('PRAGMA busy_timeout=30000')
+            # Allow concurrent reads during writes
+            conn.execute('PRAGMA synchronous=NORMAL')
+        except:
+            pass
         return conn
 
 def get_current_hotel_id():
