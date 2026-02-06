@@ -24,6 +24,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 from reportlab.lib.units import inch
 import smtplib
+import socket
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -90,18 +91,22 @@ ACCOUNT_DELETE_DAYS = 31
 
 def send_otp_email(recipient_email, otp_code):
     """Send OTP to email with comprehensive error handling"""
+    import sys
     
     # Check if email is configured
     if not EMAIL_CONFIGURED:
-        print(f"[WARNING] Email not configured - OTP not sent to {recipient_email}")
-        print(f"[INFO] OTP for testing: {otp_code}")
+        print(f"[WARNING] Email not configured - OTP not sent to {recipient_email}", flush=True)
+        print(f"[INFO] OTP for testing: {otp_code}", flush=True)
+        sys.stderr.flush()
         return False
     
     try:
         # Validate email format
         if '@' not in recipient_email:
-            print(f"[ERROR] Invalid recipient email: {recipient_email}")
+            print(f"[ERROR] Invalid recipient email: {recipient_email}", flush=True)
             return False
+        
+        print(f"[DEBUG] Preparing OTP email for {recipient_email}", flush=True)
         
         msg = MIMEMultipart('alternative')
         msg['From'] = SENDER_EMAIL
@@ -124,7 +129,7 @@ def send_otp_email(recipient_email, otp_code):
             </head>
             <body>
                 <div class="container">
-                    <div class="header">🔐 Your OTP Code</div>
+                    <div class="header">Your OTP Code</div>
                     
                     <p>Hello,</p>
                     <p>You requested a password reset or email verification. Use the OTP code below:</p>
@@ -138,7 +143,7 @@ def send_otp_email(recipient_email, otp_code):
                     <p>If you did not request this code, please ignore this email and do not share this code with anyone.</p>
                     
                     <div class="warning">
-                        ⚠️ Never share this OTP with anyone. Our team will never ask for your OTP.
+                        Never share this OTP with anyone. Our team will never ask for your OTP.
                     </div>
                     
                     <div class="footer">
@@ -168,28 +173,53 @@ Hotel Management System Team
         
         # Send email via SMTP with error handling
         try:
+            print(f"[DEBUG] Connecting to {SMTP_SERVER}:{SMTP_PORT}", flush=True)
             server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
-            server.starttls()
-            server.login(SENDER_EMAIL, SENDER_PASSWORD)
-            server.send_message(msg)
-            server.quit()
+            print("[DEBUG] Connected to SMTP server", flush=True)
             
-            print(f"[OK] OTP email sent successfully to {recipient_email}")
+            print("[DEBUG] Starting TLS", flush=True)
+            server.starttls()
+            print("[DEBUG] TLS started", flush=True)
+            
+            print(f"[DEBUG] Logging in as {SENDER_EMAIL}", flush=True)
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            print("[DEBUG] Login successful", flush=True)
+            
+            print(f"[DEBUG] Sending message to {recipient_email}", flush=True)
+            server.send_message(msg)
+            print("[DEBUG] Message sent", flush=True)
+            
+            server.quit()
+            print("[DEBUG] Connection closed", flush=True)
+            
+            print(f"[OK] OTP email sent successfully to {recipient_email}", flush=True)
+            sys.stderr.flush()
             return True
             
         except smtplib.SMTPAuthenticationError as e:
-            print(f"[ERROR] SMTP Authentication failed - check SENDER_EMAIL and SENDER_PASSWORD")
-            print(f"[ERROR] Details: {e}")
+            print(f"[ERROR] SMTP Authentication failed - check SENDER_EMAIL and SENDER_PASSWORD", flush=True)
+            print(f"[ERROR] Exception: {str(e)}", flush=True)
+            print(f"[ERROR] SENDER_EMAIL: {SENDER_EMAIL}", flush=True)
+            print(f"[ERROR] SENDER_PASSWORD length: {len(SENDER_PASSWORD)}", flush=True)
+            sys.stderr.flush()
             return False
         except smtplib.SMTPException as e:
-            print(f"[ERROR] SMTP error sending email: {e}")
+            print(f"[ERROR] SMTP error sending email: {str(e)}", flush=True)
+            sys.stderr.flush()
+            return False
+        except socket.timeout as e:
+            print(f"[ERROR] SMTP connection timeout: {str(e)}", flush=True)
+            sys.stderr.flush()
             return False
         except Exception as e:
-            print(f"[ERROR] Connection error: {e}")
+            print(f"[ERROR] Connection error: {str(e)}", flush=True)
+            print(f"[ERROR] Error type: {type(e).__name__}", flush=True)
+            sys.stderr.flush()
             return False
         
     except Exception as e:
-        print(f"[ERROR] Failed to create email for {recipient_email}: {e}")
+        print(f"[ERROR] Failed to create email for {recipient_email}: {str(e)}", flush=True)
+        sys.stderr.flush()
         return False
 
 def generate_otp():
