@@ -79,13 +79,83 @@ INACTIVITY_WARNING_DAYS = 30
 ACCOUNT_DELETE_DAYS = 31
 
 def send_otp_email(recipient_email, otp_code):
-    """Send OTP to email or display it locally for testing"""
+    """Send OTP to email"""
     try:
-        # For development/testing: Just save OTP without actual email sending
-        print(f"[OK] OTP Generated for {recipient_email}: {otp_code}")
+        msg = MIMEMultipart('alternative')
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = recipient_email
+        msg['Subject'] = f"Your OTP Code: {otp_code}"
+        
+        # HTML email template
+        html_body = f"""
+        <html>
+            <head>
+                <style>
+                    body {{ font-family: Arial, sans-serif; background-color: #f5f5f5; }}
+                    .container {{ max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 8px; }}
+                    .header {{ color: #667eea; font-size: 24px; margin-bottom: 20px; text-align: center; }}
+                    .otp-box {{ background-color: #f0f0f0; padding: 20px; border-radius: 5px; text-align: center; margin: 20px 0; }}
+                    .otp-code {{ font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 2px; }}
+                    .warning {{ color: #ff6b6b; font-size: 12px; margin-top: 15px; text-align: center; }}
+                    .footer {{ color: #999; font-size: 12px; margin-top: 20px; text-align: center; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">🔐 Your OTP Code</div>
+                    
+                    <p>Hello,</p>
+                    <p>You requested a password reset or email verification. Use the OTP code below:</p>
+                    
+                    <div class="otp-box">
+                        <div class="otp-code">{otp_code}</div>
+                    </div>
+                    
+                    <p><strong>This OTP will expire in 10 minutes.</strong></p>
+                    
+                    <p>If you did not request this code, please ignore this email and do not share this code with anyone.</p>
+                    
+                    <div class="warning">
+                        ⚠️ Never share this OTP with anyone. Our team will never ask for your OTP.
+                    </div>
+                    
+                    <div class="footer">
+                        <p>Best regards,<br/>Hotel Management System Team</p>
+                    </div>
+                </div>
+            </body>
+        </html>
+        """
+        
+        # Plain text version
+        text_body = f"""
+Your OTP Code: {otp_code}
+
+This OTP will expire in 10 minutes.
+
+If you did not request this code, please ignore this email.
+
+Do not share this OTP with anyone.
+
+Best regards,
+Hotel Management System Team
+        """
+        
+        msg.attach(MIMEText(text_body, 'plain'))
+        msg.attach(MIMEText(html_body, 'html'))
+        
+        # Send email via SMTP
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        
+        print(f"[OK] OTP email sent successfully to {recipient_email}")
         return True
+        
     except Exception as e:
-        print(f"Error sending email: {e}")
+        print(f"Error sending OTP email to {recipient_email}: {e}")
         return False
 
 def generate_otp():
@@ -127,6 +197,16 @@ def mark_otp_used(email):
     
     c.execute('UPDATE otp_tokens SET is_used = 1 WHERE owner_email = ? AND is_used = 0',
               (email,))
+    
+    conn.commit()
+    conn.close()
+
+def mark_email_verified(email):
+    """Mark email as verified in settings"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    c.execute('UPDATE settings SET owner_verified = 1 WHERE owner_email = ?', (email,))
     
     conn.commit()
     conn.close()
@@ -1258,16 +1338,33 @@ def signup():
             return render_template('auth/signup.html', error='Email already registered',
                                  email=email, hotel_name=hotel_name, hotel_slug=hotel_slug)
         
-        # Create new hotel record
+        # Create new hotel record with initial status
         hashed_password = generate_password_hash(password)
         try:
             c.execute('''INSERT INTO settings (hotel_name, hotel_slug, owner_email, owner_password, owner_verified)
-                         VALUES (?, ?, ?, ?, 1)''',
+                         VALUES (?, ?, ?, ?, 0)''',
                       (hotel_name, hotel_slug, email, hashed_password))
             conn.commit()
             conn.close()
             
-            return render_template('auth/signup_success.html', email=email, hotel_slug=hotel_slug)
+            # Generate and send verification OTP
+            otp_code = generate_otp()
+            save_otp(email, otp_code)
+            
+            # Send verification email with OTP
+            email_sent = send_otp_email(email, otp_code)
+            
+            if email_sent:
+                return render_template('auth/signup_success.html', 
+                                     email=email, 
+                                     hotel_slug=hotel_slug,
+                                     message='Account created successfully! Verification email has been sent.',
+                                     verify_url=url_for('verify_otp', email=email))
+            else:
+                return render_template('auth/signup_success.html', 
+                                     email=email, 
+                                     hotel_slug=hotel_slug,
+                                     message='Account created! We were unable to send verification email. You can try password reset to verify later.')
         except Exception as e:
             conn.close()
             return render_template('auth/signup.html', error=f'Signup failed: {str(e)}',
@@ -1292,20 +1389,27 @@ def forgot_password():
             return render_template('auth/forgot_password.html', 
                                  message='If the email exists, you will receive an OTP shortly')
         
-        # Generate and save OTP (don't actually send email in development)
+        # Generate and save OTP
         otp_code = generate_otp()
         save_otp(email, otp_code)
         
-        # For development/testing - show success message and redirect
-        return render_template('auth/forgot_password.html', 
-                             message=f'✅ OTP sent to {email}. Check console or use OTP to verify. (Dev: OTP is {otp_code})',
-                             redirect_url=url_for('verify_otp', email=email))
+        # Send OTP via email
+        email_sent = send_otp_email(email, otp_code)
+        
+        if email_sent:
+            return render_template('auth/forgot_password.html', 
+                                 message=f'✅ OTP sent to {email}. Check your email for the verification code.',
+                                 redirect_url=url_for('verify_otp', email=email))
+        else:
+            return render_template('auth/forgot_password.html', 
+                                 message='Failed to send OTP. Please check your email configuration and try again.',
+                                 error=True)
     
     return render_template('auth/forgot_password.html')
 
 @app.route('/auth/verify-otp', methods=['GET', 'POST'])
 def verify_otp():
-    """Verify OTP for password reset"""
+    """Verify OTP for email verification and password reset"""
     email = request.args.get('email') or request.form.get('email')
     
     if request.method == 'POST':
@@ -1313,7 +1417,23 @@ def verify_otp():
         
         if check_otp(email, otp_code):
             mark_otp_used(email)
-            return redirect(url_for('reset_password', email=email))
+            # Mark email as verified
+            mark_email_verified(email)
+            # Check if this is a password reset or signup verification
+            # If password reset, go to reset password page
+            # If signup verification, show success message
+            conn = get_db()
+            c = conn.cursor()
+            c.execute('SELECT id FROM settings WHERE owner_email = ?', (email,))
+            account = c.fetchone()
+            conn.close()
+            
+            if account:
+                return redirect(url_for('reset_password', email=email))
+            else:
+                return render_template('auth/verify_otp.html', email=email, 
+                                     success='Email verified successfully! You can now login.',
+                                     redirect_url=url_for('admin_login'))
         else:
             return render_template('auth/verify_otp.html', email=email, 
                                  error='Invalid or expired OTP')
