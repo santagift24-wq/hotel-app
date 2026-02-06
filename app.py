@@ -58,8 +58,18 @@ app.secret_key = os.environ.get('SECRET_KEY', 'restaurant_system_secret_2026')
 # Email Configuration for sending reports
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'your-email@gmail.com')
-SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD', 'your-app-password')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', '').strip()
+SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD', '').strip()
+
+# Validate email credentials
+EMAIL_CONFIGURED = SENDER_EMAIL and SENDER_PASSWORD and not SENDER_EMAIL.startswith('your-')
+if not EMAIL_CONFIGURED:
+    print("[WARNING] Email not configured!")
+    print("  - Set SENDER_EMAIL environment variable")
+    print("  - Set SENDER_PASSWORD environment variable (use Gmail App Password)")
+    print("  - OTP emails will not be sent until configured")
+else:
+    print(f"[OK] Email configured: {SENDER_EMAIL}")
 
 # Razorpay Configuration
 RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', 'rzp_test_YOUR_KEY')
@@ -79,8 +89,20 @@ INACTIVITY_WARNING_DAYS = 30
 ACCOUNT_DELETE_DAYS = 31
 
 def send_otp_email(recipient_email, otp_code):
-    """Send OTP to email"""
+    """Send OTP to email with comprehensive error handling"""
+    
+    # Check if email is configured
+    if not EMAIL_CONFIGURED:
+        print(f"[WARNING] Email not configured - OTP not sent to {recipient_email}")
+        print(f"[INFO] OTP for testing: {otp_code}")
+        return False
+    
     try:
+        # Validate email format
+        if '@' not in recipient_email:
+            print(f"[ERROR] Invalid recipient email: {recipient_email}")
+            return False
+        
         msg = MIMEMultipart('alternative')
         msg['From'] = SENDER_EMAIL
         msg['To'] = recipient_email
@@ -144,18 +166,30 @@ Hotel Management System Team
         msg.attach(MIMEText(text_body, 'plain'))
         msg.attach(MIMEText(html_body, 'html'))
         
-        # Send email via SMTP
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        server.send_message(msg)
-        server.quit()
-        
-        print(f"[OK] OTP email sent successfully to {recipient_email}")
-        return True
+        # Send email via SMTP with error handling
+        try:
+            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.send_message(msg)
+            server.quit()
+            
+            print(f"[OK] OTP email sent successfully to {recipient_email}")
+            return True
+            
+        except smtplib.SMTPAuthenticationError as e:
+            print(f"[ERROR] SMTP Authentication failed - check SENDER_EMAIL and SENDER_PASSWORD")
+            print(f"[ERROR] Details: {e}")
+            return False
+        except smtplib.SMTPException as e:
+            print(f"[ERROR] SMTP error sending email: {e}")
+            return False
+        except Exception as e:
+            print(f"[ERROR] Connection error: {e}")
+            return False
         
     except Exception as e:
-        print(f"Error sending OTP email to {recipient_email}: {e}")
+        print(f"[ERROR] Failed to create email for {recipient_email}: {e}")
         return False
 
 def generate_otp():
@@ -1632,6 +1666,20 @@ def logout():
     """Logout user"""
     session.clear()
     return redirect(url_for('admin_login'))
+
+
+@app.route('/health/email-config')
+def email_config_status():
+    """Check email configuration status (for diagnostics)"""
+    return jsonify({
+        'email_configured': EMAIL_CONFIGURED,
+        'sender_email_set': bool(SENDER_EMAIL),
+        'sender_password_set': bool(SENDER_PASSWORD),
+        'sender_email_masked': f"{SENDER_EMAIL[:3]}***@{SENDER_EMAIL.split('@')[1]}" if SENDER_EMAIL and '@' in SENDER_EMAIL else 'Not set',
+        'smtpserver': SMTP_SERVER,
+        'smtp_port': SMTP_PORT,
+        'message': 'Email is configured and ready' if EMAIL_CONFIGURED else 'Email is NOT configured - OTP emails will not be sent.'
+    })
 
 
 @app.route('/admin/dashboard', methods=['GET'])
