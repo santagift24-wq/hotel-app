@@ -974,13 +974,26 @@ app.jinja_env.filters['from_json'] = from_json
 # ============================================================================
 
 # Database setup - use persistent storage if available (Railway Disk)
-# Check if /data directory exists (Railway persistent volume)
-if os.path.exists('/data'):
-    db_dir = '/data'
-else:
-    db_dir = os.path.dirname(os.path.abspath(__file__))
-    
-DB_PATH = os.path.join(db_dir, 'restaurant.db')
+# CRITICAL: For Railway deployment, persistent storage MUST be configured
+# Without it, all data will be lost on redeploy!
+# See: RAILWAY_DEPLOYMENT.md for setup instructions
+
+def get_db_path():
+    """Get database path - prioritize persistent storage"""
+    # Check if /data directory exists (Railway persistent volume)
+    if os.path.exists('/data'):
+        return '/data/restaurant.db'
+    elif os.path.exists('/persistent'):
+        return '/persistent/restaurant.db'
+    else:
+        # Fallback to app directory (local development only)
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'restaurant.db')
+
+DB_PATH = get_db_path()
+
+# Log database location for debugging
+print(f"[DATABASE] Using database at: {DB_PATH}")
+print(f"[DATABASE] Persistent storage exists: {os.path.exists('/data') or os.path.exists('/persistent')}")
 
 def init_db():
     """Initialize database - with full error tolerance"""
@@ -1242,18 +1255,33 @@ def admin_login():
             
             # Try email-based login first (new system)
             if login_type == 'email' or '@' in email_or_username:
-                c.execute('SELECT * FROM settings WHERE owner_email = ? LIMIT 1', (email_or_username,))
-                owner = c.fetchone()
+                # Find all hotels owned by this email
+                c.execute('SELECT id, hotel_name, hotel_slug FROM settings WHERE owner_email = ? AND owner_password IS NOT NULL', (email_or_username,))
+                hotels = c.fetchall()
                 
-                if owner and owner['owner_password']:
-                    if check_password_hash(owner['owner_password'], password):
-                        session['admin_id'] = owner['id']
-                        session['admin_email'] = owner['owner_email']
-                        session['hotel_name'] = owner['hotel_name']
-                        session['is_main_admin'] = True
-                        session['auth_type'] = 'email'
-                        conn.close()
-                        return redirect(url_for('admin_dashboard'))
+                if hotels:
+                    # Verify password matches any of the hotels (all should have same password)
+                    c.execute('SELECT owner_password FROM settings WHERE owner_email = ? LIMIT 1', (email_or_username,))
+                    owner = c.fetchone()
+                    
+                    if owner and check_password_hash(owner['owner_password'], password):
+                        # If user owns multiple hotels, show selection page
+                        if len(hotels) > 1:
+                            session['admin_email'] = email_or_username
+                            session['temp_hotels'] = [(h['id'], h['hotel_name'], h['hotel_slug']) for h in hotels]
+                            conn.close()
+                            return redirect(url_for('select_hotel'))
+                        else:
+                            # Single hotel - proceed to dashboard
+                            hotel = hotels[0]
+                            session['admin_id'] = hotel['id']
+                            session['admin_email'] = email_or_username
+                            session['hotel_name'] = hotel['hotel_name']
+                            session['hotel_slug'] = hotel['hotel_slug']
+                            session['is_main_admin'] = True
+                            session['auth_type'] = 'email'
+                            conn.close()
+                            return redirect(url_for('admin_dashboard'))
             
             # Fallback to legacy username login
             c.execute('SELECT * FROM admin_users WHERE username = ? AND password = ?', (email_or_username, password))
@@ -1295,6 +1323,39 @@ def admin_login():
         print(f"Error in admin_login: {str(e)}")
         return render_template('admin/login.html', error='system_error'), 500
 
+@app.route('/admin/select-hotel', methods=['GET', 'POST'])
+def select_hotel():
+    """Select which hotel to access (when user owns multiple hotels)"""
+    if 'admin_email' not in session or 'temp_hotels' not in session:
+        return redirect(url_for('admin_login'))
+    
+    if request.method == 'POST':
+        selected_hotel_id = request.form.get('hotel_id')
+        
+        # Find and verify the selected hotel
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('SELECT id, hotel_name, hotel_slug FROM settings WHERE id = ? AND owner_email = ?', 
+                 (selected_hotel_id, session['admin_email']))
+        hotel = c.fetchone()
+        conn.close()
+        
+        if hotel:
+            # Set session variables for selected hotel
+            session['admin_id'] = hotel['id']
+            session['hotel_name'] = hotel['hotel_name']
+            session['hotel_slug'] = hotel['hotel_slug']
+            session['is_main_admin'] = True
+            # Clear temp data
+            session.pop('temp_hotels', None)
+            return redirect(url_for('admin_dashboard'))
+        else:
+            return render_template('admin/select_hotel.html', 
+                                 hotels=session['temp_hotels'],
+                                 error='Invalid hotel selection')
+    
+    return render_template('admin/select_hotel.html', hotels=session['temp_hotels'])
+
 @app.route('/auth/signup', methods=['GET', 'POST'])
 def signup():
     """Owner signup with email and password"""
@@ -1331,12 +1392,8 @@ def signup():
         conn = get_db()
         c = conn.cursor()
         
-        # Check if email already exists
-        c.execute('SELECT * FROM settings WHERE owner_email = ?', (email,))
-        if c.fetchone():
-            conn.close()
-            return render_template('auth/signup.html', error='Email already registered',
-                                 email=email, hotel_name=hotel_name, hotel_slug=hotel_slug)
+        # Note: Removed email uniqueness check to allow one email to manage multiple hotels
+        # Email can now create multiple hotel accounts
         
         # Create new hotel record with initial status
         hashed_password = generate_password_hash(password)
