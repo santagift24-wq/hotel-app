@@ -1879,6 +1879,10 @@ def admin_tables():
             # Create QR image
             qr_image = qr.make_image(fill_color="black", back_color="white")
             
+            # Convert to RGB if needed (in case it's RGBA)
+            if qr_image.mode != 'RGB':
+                qr_image = qr_image.convert('RGB')
+            
             # Create a larger image with QR code and table number text
             qr_size = qr_image.size[0]
             # Create new image with space for text below QR code
