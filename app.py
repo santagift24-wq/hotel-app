@@ -3366,21 +3366,21 @@ if __name__ == '__main__':
                 'message': 'Diagnostics check failed'
             }), 500
     
-    # ============================================================================
-    # STORE MANAGEMENT API ROUTES
-    # ============================================================================
-    
-    @app.route('/store-profile')
-    @login_required
-    def store_profile_page():
-        """Display store profile management page"""
-        return render_template('admin/store_profile.html')
-    
-    @app.route('/table-management')
-    @login_required
-    def table_management_page():
-        """Display table management page"""
-        return render_template('admin/table_management.html')
+# ============================================================================
+# STORE MANAGEMENT API ROUTES
+# ============================================================================
+
+@app.route('/store-profile')
+@login_required
+def store_profile_page():
+    """Display store profile management page"""
+    return render_template('admin/store_profile.html')
+
+@app.route('/table-management')
+@login_required
+def table_management_page():
+    """Display table management page"""
+    return render_template('admin/table_management.html')
     
     @app.route('/api/update-store-profile', methods=['POST'])
     def update_store_profile():
