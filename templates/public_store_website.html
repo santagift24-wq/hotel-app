@@ -30,6 +30,28 @@
             text-align: center;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
+        
+        .header-logo-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .header-logo {
+            max-width: 120px;
+            max-height: 120px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            background: white;
+            padding: 10px;
+        }
+        
+        .header-info {
+            text-align: left;
+        }
 
         header h1 {
             font-size: 2.5rem;
@@ -239,6 +261,15 @@
 
         /* Responsive */
         @media (max-width: 768px) {
+            .header-logo-section {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .header-info {
+                text-align: center;
+            }
+            
             header h1 {
                 font-size: 1.8rem;
             }
@@ -292,16 +323,26 @@
 <body class="theme-{{ website.website_theme or 'default' }}">
     <!-- Header -->
     <header>
-        <h1>{{ website.website_title or store.hotel_name }}</h1>
-        {% if website.website_description %}
-        <p>{{ website.website_description }}</p>
-        {% endif %}
+        <div class="header-logo-section">
+            {% if store.logo_url %}
+            <img src="{{ store.logo_url }}" alt="{{ store.hotel_name }} Logo" class="header-logo">
+            {% endif %}
+            <div class="header-info">
+                <h1>{{ website.website_title or store.hotel_name }}</h1>
+                {% if website.website_description %}
+                <p>{{ website.website_description }}</p>
+                {% endif %}
+            </div>
+        </div>
         <div class="header-contact">
             {% if store.street_address %}
             <span>📍 {{ store.street_address }}</span>
             {% endif %}
             {% if store.phone_number %}
             <span>📞 {{ store.phone_number }}</span>
+            {% endif %}
+            {% if store.rating %}
+            <span>⭐ {{ "%.1f"|format(store.rating) }} ({{ store.review_count or 0 }} reviews)</span>
             {% endif %}
         </div>
     </header>
@@ -337,6 +378,18 @@
                 <div class="info-card">
                     <strong>📝 About</strong>
                     <p>{{ store.store_description }}</p>
+                </div>
+                {% endif %}
+                {% if store.rating %}
+                <div class="info-card">
+                    <strong>⭐ Rating</strong>
+                    <p>{{ "%.1f"|format(store.rating) }} Stars ({{ store.review_count or 0 }} reviews)</p>
+                </div>
+                {% endif %}
+                {% if store.review_summary %}
+                <div class="info-card">
+                    <strong>💬 Customer Reviews</strong>
+                    <p>{{ store.review_summary }}</p>
                 </div>
                 {% endif %}
             </div>
