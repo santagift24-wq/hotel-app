@@ -65,12 +65,9 @@ SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD', '').strip()
 # Validate email credentials
 EMAIL_CONFIGURED = SENDER_EMAIL and SENDER_PASSWORD and not SENDER_EMAIL.startswith('your-')
 if not EMAIL_CONFIGURED:
-    print("[WARNING] Email not configured!")
-    print("  - Set SENDER_EMAIL environment variable")
-    print("  - Set SENDER_PASSWORD environment variable (use Gmail App Password)")
-    print("  - OTP emails will not be sent until configured")
+    pass  # Email not configured - skipped to improve startup speed
 else:
-    print(f"[OK] Email configured: {SENDER_EMAIL}")
+    pass  # Email configured
 
 # Razorpay Configuration
 RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', 'rzp_test_YOUR_KEY')
@@ -90,23 +87,16 @@ INACTIVITY_WARNING_DAYS = 30
 ACCOUNT_DELETE_DAYS = 31
 
 def send_otp_email(recipient_email, otp_code):
-    """Send OTP to email with comprehensive error handling"""
-    import sys
-    
+    """Send OTP to email with error handling"""
     # Check if email is configured
     if not EMAIL_CONFIGURED:
-        print(f"[WARNING] Email not configured - OTP not sent to {recipient_email}", flush=True)
-        print(f"[INFO] OTP for testing: {otp_code}", flush=True)
-        sys.stderr.flush()
+        return False
         return False
     
     try:
         # Validate email format
         if '@' not in recipient_email:
-            print(f"[ERROR] Invalid recipient email: {recipient_email}", flush=True)
             return False
-        
-        print(f"[DEBUG] Preparing OTP email for {recipient_email}", flush=True)
         
         msg = MIMEMultipart('alternative')
         msg['From'] = SENDER_EMAIL
@@ -171,55 +161,19 @@ Hotel Management System Team
         msg.attach(MIMEText(text_body, 'plain'))
         msg.attach(MIMEText(html_body, 'html'))
         
-        # Send email via SMTP with error handling
+        # Send email via SMTP
         try:
-            print(f"[DEBUG] Connecting to {SMTP_SERVER}:{SMTP_PORT}", flush=True)
             server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
-            print("[DEBUG] Connected to SMTP server", flush=True)
-            
-            print("[DEBUG] Starting TLS", flush=True)
             server.starttls()
-            print("[DEBUG] TLS started", flush=True)
-            
-            print(f"[DEBUG] Logging in as {SENDER_EMAIL}", flush=True)
             server.login(SENDER_EMAIL, SENDER_PASSWORD)
-            print("[DEBUG] Login successful", flush=True)
-            
-            print(f"[DEBUG] Sending message to {recipient_email}", flush=True)
             server.send_message(msg)
-            print("[DEBUG] Message sent", flush=True)
-            
             server.quit()
-            print("[DEBUG] Connection closed", flush=True)
-            
-            print(f"[OK] OTP email sent successfully to {recipient_email}", flush=True)
-            sys.stderr.flush()
             return True
             
-        except smtplib.SMTPAuthenticationError as e:
-            print(f"[ERROR] SMTP Authentication failed - check SENDER_EMAIL and SENDER_PASSWORD", flush=True)
-            print(f"[ERROR] Exception: {str(e)}", flush=True)
-            print(f"[ERROR] SENDER_EMAIL: {SENDER_EMAIL}", flush=True)
-            print(f"[ERROR] SENDER_PASSWORD length: {len(SENDER_PASSWORD)}", flush=True)
-            sys.stderr.flush()
-            return False
-        except smtplib.SMTPException as e:
-            print(f"[ERROR] SMTP error sending email: {str(e)}", flush=True)
-            sys.stderr.flush()
-            return False
-        except socket.timeout as e:
-            print(f"[ERROR] SMTP connection timeout: {str(e)}", flush=True)
-            sys.stderr.flush()
-            return False
-        except Exception as e:
-            print(f"[ERROR] Connection error: {str(e)}", flush=True)
-            print(f"[ERROR] Error type: {type(e).__name__}", flush=True)
-            sys.stderr.flush()
+        except Exception:
             return False
         
-    except Exception as e:
-        print(f"[ERROR] Failed to create email for {recipient_email}: {str(e)}", flush=True)
-        sys.stderr.flush()
+    except Exception:
         return False
 
 def generate_otp():
@@ -243,14 +197,11 @@ def save_otp(email, otp_code, retries=3):
             return True
         except sqlite3.OperationalError as e:
             if 'database is locked' in str(e) and attempt < retries - 1:
-                print(f"[WARNING] Database locked on OTP save, retrying ({attempt + 1}/{retries})...")
-                time.sleep(0.5 * (attempt + 1))  # Exponential backoff
+                time.sleep(0.5 * (attempt + 1))
                 continue
             else:
-                print(f"[ERROR] Failed to save OTP after {retries} attempts: {e}")
                 return False
-        except Exception as e:
-            print(f"[ERROR] Error saving OTP: {e}")
+        except Exception:
             return False
 
 def check_otp(email, otp_code, retries=3):
