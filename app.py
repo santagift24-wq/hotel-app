@@ -1391,7 +1391,57 @@ def init_db():
         
         conn.commit()
         
+        # Superadmin users table
+        c.execute('''CREATE TABLE IF NOT EXISTS superadmins (
+            id INTEGER PRIMARY KEY,
+            username TEXT UNIQUE,
+            password TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
         # Add columns if they don't exist
+        try:
+            c.execute('ALTER TABLE settings ADD COLUMN approval_status TEXT DEFAULT "pending"')
+            conn.commit()
+        except:
+            pass
+        
+        try:
+            c.execute('ALTER TABLE settings ADD COLUMN contact_email TEXT')
+            conn.commit()
+        except:
+            pass
+        
+        try:
+            c.execute('ALTER TABLE settings ADD COLUMN contact_phone TEXT')
+            conn.commit()
+        except:
+            pass
+        
+        try:
+            c.execute('ALTER TABLE settings ADD COLUMN service_online_ordering INTEGER DEFAULT 0')
+            conn.commit()
+        except:
+            pass
+        
+        try:
+            c.execute('ALTER TABLE settings ADD COLUMN service_table_management INTEGER DEFAULT 0')
+            conn.commit()
+        except:
+            pass
+        
+        try:
+            c.execute('ALTER TABLE settings ADD COLUMN service_analytics INTEGER DEFAULT 0')
+            conn.commit()
+        except:
+            pass
+        
+        try:
+            c.execute('ALTER TABLE settings ADD COLUMN service_payments INTEGER DEFAULT 0')
+            conn.commit()
+        except:
+            pass
+        
         try:
             c.execute('ALTER TABLE settings ADD COLUMN owner_password TEXT')
             conn.commit()
@@ -1408,8 +1458,8 @@ def init_db():
         try:
             c.execute('SELECT COUNT(*) FROM settings')
             if c.fetchone()[0] == 0:
-                c.execute('INSERT INTO settings (hotel_name, hotel_slug) VALUES (?, ?)', 
-                         ('Royal Restaurant', 'royal-restaurant'))
+                c.execute('INSERT INTO settings (hotel_name, hotel_slug, approval_status) VALUES (?, ?, ?)', 
+                         ('Royal Restaurant', 'royal-restaurant', 'pending'))
                 conn.commit()
         except:
             pass
@@ -1419,6 +1469,19 @@ def init_db():
             if c.fetchone()[0] == 0:
                 c.execute('INSERT INTO admin_users (username, password) VALUES (?, ?)', 
                          ('admin', 'admin123'))
+                conn.commit()
+        except:
+            pass
+        
+        # Create default superadmin if not exists
+        try:
+            c.execute('SELECT COUNT(*) FROM superadmins')
+            if c.fetchone()[0] == 0:
+                # Create owner account - username: owner, password: owner123
+                from werkzeug.security import generate_password_hash
+                hashed_pw = generate_password_hash('owner123')
+                c.execute('INSERT INTO superadmins (username, password) VALUES (?, ?)', 
+                         ('owner', hashed_pw))
                 conn.commit()
         except:
             pass
@@ -3870,6 +3933,164 @@ def get_store_website_url():
             'slug': result['hotel_slug']
         })
     
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+# ============================================================================
+# SUPERADMIN ROUTES (Software Owner)
+# ============================================================================
+
+@app.route('/superadmin/login', methods=['GET', 'POST'])
+def superadmin_login():
+    """Superadmin login page"""
+    if request.method == 'GET':
+        return render_template('superadmin_login.html')
+    
+    # POST request - handle login
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('SELECT * FROM superadmins WHERE username = ?', (username,))
+        superadmin = c.fetchone()
+        conn.close()
+        
+        if not superadmin or not check_password_hash(superadmin['password'], password):
+            return jsonify({'success': False, 'error': 'Invalid credentials'})
+        
+        session['superadmin_id'] = superadmin['id']
+        session['is_superadmin'] = True
+        return jsonify({'success': True})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/superadmin/dashboard')
+def superadmin_dashboard():
+    """Superadmin dashboard"""
+    if not session.get('is_superadmin'):
+        return redirect(url_for('superadmin_login'))
+    
+    return render_template('superadmin_dashboard.html')
+
+@app.route('/superadmin/logout', methods=['POST'])
+def superadmin_logout():
+    """Logout superadmin"""
+    session.clear()
+    return jsonify({'success': True})
+
+@app.route('/superadmin/api/stores')
+def api_get_stores():
+    """Get all stores for superadmin"""
+    if not session.get('is_superadmin'):
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    
+    try:
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('SELECT * FROM settings ORDER BY created_at DESC')
+        stores = [dict(row) for row in c.fetchall()]
+        conn.close()
+        return jsonify({'success': True, 'stores': stores})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/superadmin/api/approve-store/<int:store_id>', methods=['POST'])
+def api_approve_store(store_id):
+    """Approve a store and enable all services"""
+    if not session.get('is_superadmin'):
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    
+    try:
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('''UPDATE settings 
+                    SET approval_status = ?, 
+                        service_online_ordering = 1,
+                        service_table_management = 1,
+                        service_analytics = 1,
+                        service_payments = 1
+                    WHERE id = ?''',
+                 ('approved', store_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/superadmin/api/reject-store/<int:store_id>', methods=['POST'])
+def api_reject_store(store_id):
+    """Reject a store request"""
+    if not session.get('is_superadmin'):
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    
+    try:
+        data = request.get_json()
+        reason = data.get('reason', 'No reason provided')
+        
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('''UPDATE settings 
+                    SET approval_status = ?
+                    WHERE id = ?''',
+                 ('rejected', store_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/superadmin/api/disable-store/<int:store_id>', methods=['POST'])
+def api_disable_store(store_id):
+    """Suspend/disable a store"""
+    if not session.get('is_superadmin'):
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    
+    try:
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('''UPDATE settings 
+                    SET approval_status = ?
+                    WHERE id = ?''',
+                 ('suspended', store_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/superadmin/api/toggle-service/<int:store_id>', methods=['POST'])
+def api_toggle_service(store_id):
+    """Toggle a service for a store"""
+    if not session.get('is_superadmin'):
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    
+    try:
+        data = request.get_json()
+        service = data.get('service')
+        enabled = data.get('enabled', True)
+        
+        service_map = {
+            'online_ordering': 'service_online_ordering',
+            'table_management': 'service_table_management',
+            'analytics': 'service_analytics',
+            'payments': 'service_payments'
+        }
+        
+        if service not in service_map:
+            return jsonify({'success': False, 'error': 'Invalid service'})
+        
+        column = service_map[service]
+        conn = get_db()
+        c = conn.cursor()
+        c.execute(f'UPDATE settings SET {column} = ? WHERE id = ?',
+                 (1 if enabled else 0, store_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
