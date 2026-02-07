@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ store.hotel_name }} - Food Hub Restaurant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        :root {
+            --primary-color: {{ website.website_color or '#4CAF50' }};
+            --theme: {{ website.website_theme or 'default' }};
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, rgba(0,0,0,0.1) 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+        }
+
+        .header-contact {
+            margin-top: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .header-contact span {
+            margin: 0 1rem;
+        }
+
+        /* Navigation */
+        nav {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: color 0.3s;
+            cursor: pointer;
+        }
+
+        nav a:hover {
+            color: var(--primary-color);
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        section {
+            margin: 3rem 0;
+        }
+
+        section h2 {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: 0.5rem;
+        }
+
+        /* Info Cards */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .info-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 5px solid var(--primary-color);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .info-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+
+        .info-card strong {
+            display: block;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Photos Gallery */
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .gallery img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+
+        .gallery img:hover {
+            transform: scale(1.05);
+        }
+
+        /* Hours */
+        .hours-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .hours-table th,
+        .hours-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .hours-table th {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .hours-table tr:hover {
+            background: #f5f5f5;
+        }
+
+        /* CTA Button */
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: 2px solid var(--primary-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Footer */
+        footer {
+            background: #333;
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            margin-top: 3rem;
+        }
+
+        footer p {
+            margin: 0.5rem 0;
+        }
+
+        /* Description Section */
+        .description {
+            background: #f9f9f9;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            line-height: 1.8;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            nav ul {
+                gap: 1rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .gallery {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
+
+        /* Modern Theme Variants */
+        .theme-modern {
+            --primary-color: #FF6B6B;
+        }
+
+        .theme-elegant {
+            --primary-color: #8B4789;
+        }
+
+        .theme-vibrant {
+            --primary-color: #FF9F43;
+        }
+
+        /* Utility Classes */
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-2 { margin-top: 1rem; }
+        .mt-3 { margin-top: 2rem; }
+        .mb-2 { margin-bottom: 1rem; }
+        .mb-3 { margin-bottom: 2rem; }
+    </style>
+</head>
+<body class="theme-{{ website.website_theme or 'default' }}">
+    <!-- Header -->
+    <header>
+        <h1>{{ website.website_title or store.hotel_name }}</h1>
+        {% if website.website_description %}
+        <p>{{ website.website_description }}</p>
+        {% endif %}
+        <div class="header-contact">
+            {% if store.street_address %}
+            <span>📍 {{ store.street_address }}</span>
+            {% endif %}
+            {% if store.phone_number %}
+            <span>📞 {{ store.phone_number }}</span>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav>
+        <ul>
+            <li><a href="#about">About Us</a></li>
+            <li><a href="#menu">Menu</a></li>
+            <li><a href="#hours">Hours</a></li>
+            <li><a href="#gallery">Gallery</a></li>
+            <li><a href="#contact">Contact</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- About Section -->
+        <section id="about">
+            <h2>About Us</h2>
+            <div class="info-grid">
+                <div class="info-card">
+                    <strong>🏪 Restaurant Name</strong>
+                    <p>{{ store.hotel_name }}</p>
+                </div>
+                {% if store.cuisine_type %}
+                <div class="info-card">
+                    <strong>🍽️ Cuisine Type</strong>
+                    <p>{{ store.cuisine_type }}</p>
+                </div>
+                {% endif %}
+                {% if store.store_description %}
+                <div class="info-card">
+                    <strong>📝 About</strong>
+                    <p>{{ store.store_description }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- Hours Section -->
+        <section id="hours">
+            <h2>Hours of Operation</h2>
+            {% if store.open_time and store.close_time %}
+            <div class="info-card">
+                <strong>⏰ Operating Hours</strong>
+                <p>{{ store.open_time }} - {{ store.close_time }}</p>
+                {% if store.working_days %}
+                <strong style="margin-top: 1rem;">📅 Working Days</strong>
+                <p>{{ store.working_days }}</p>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="info-card">
+                <p>Hours information coming soon...</p>
+            </div>
+            {% endif %}
+        </section>
+
+        <!-- Gallery Section -->
+        {% if photos %}
+        <section id="gallery">
+            <h2>Photo Gallery</h2>
+            <div class="gallery">
+                {% for photo in photos %}
+                <img src="{{ photo.photo_url }}" alt="{{ photo.photo_title }}" title="{{ photo.photo_title }}">
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- CTA Section -->
+        <section class="text-center mt-3">
+            <h2>Ready to Order?</h2>
+            <div class="cta-buttons">
+                <a href="{{ order_link }}" class="btn btn-primary">Place Order Now</a>
+                <a href="#contact" class="btn btn-secondary">Contact Us</a>
+            </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section id="contact">
+            <h2>Contact Us</h2>
+            <div class="info-grid">
+                {% if store.phone_number %}
+                <div class="info-card">
+                    <strong>📞 Phone</strong>
+                    <a href="tel:{{ store.phone_number }}" style="color: var(--primary-color); text-decoration: none;">
+                        {{ store.phone_number }}
+                    </a>
+                </div>
+                {% endif %}
+                {% if store.store_email %}
+                <div class="info-card">
+                    <strong>📧 Email</strong>
+                    <a href="mailto:{{ store.store_email }}" style="color: var(--primary-color); text-decoration: none;">
+                        {{ store.store_email }}
+                    </a>
+                </div>
+                {% endif %}
+                {% if store.street_address %}
+                <div class="info-card">
+                    <strong>📍 Address</strong>
+                    <p>{{ store.street_address }}
+                    {% if store.city %}{{ store.city }}{% endif %}
+                    {% if store.state %}{{ store.state }}{% endif %}</p>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 {{ website.website_title or store.hotel_name }}. All rights reserved.</p>
+        <p>Powered by Food Hub Restaurant Management System</p>
+    </footer>
+
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -41,6 +41,55 @@
             color: #666;
             font-size: 16px;
         }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .view-website-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .view-website-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .copy-link-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .copy-link-btn:hover {
+            background: #0b7dda;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
         
         .tabs {
             display: flex;
@@ -331,8 +380,20 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1><i class="fas fa-store"></i> Store Profile</h1>
-            <p>Manage your restaurant information, hours, photos, and more</p>
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                    <h1><i class="fas fa-store"></i> Store Profile</h1>
+                    <p>Manage your restaurant information, hours, photos, and more</p>
+                </div>
+                <div class="header-actions">
+                    <button class="view-website-btn" onclick="viewWebsite()" id="viewWebsiteBtn">
+                        <i class="fas fa-globe"></i> View Website
+                    </button>
+                    <button class="copy-link-btn" onclick="copyWebsiteLink()" id="copyLinkBtn">
+                        <i class="fas fa-link"></i> Copy Link
+                    </button>
+                </div>
+            </div>
         </div>
         
         <!-- Messages -->
@@ -696,6 +757,58 @@
         window.addEventListener('load', function() {
             loadPhotoGallery();
         });
+
+        // Get store website URL
+        async function getStoreWebsiteUrl() {
+            try {
+                const response = await fetch('/api/get-store-website-url');
+                const data = await response.json();
+                if (data.success) {
+                    return data.website_url;
+                } else {
+                    showMessage('Error getting website URL: ' + data.error, 'error');
+                    return null;
+                }
+            } catch (error) {
+                showMessage('Error: ' + error, 'error');
+                return null;
+            }
+        }
+
+        // View website in new tab
+        async function viewWebsite() {
+            const btn = document.getElementById('viewWebsiteBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Loading...';
+            
+            const url = await getStoreWebsiteUrl();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-globe"></i> View Website';
+            
+            if (url) {
+                window.open(url, '_blank');
+            }
+        }
+
+        // Copy website link to clipboard
+        async function copyWebsiteLink() {
+            const btn = document.getElementById('copyLinkBtn');
+            const originalText = btn.innerHTML;
+            
+            const url = await getStoreWebsiteUrl();
+            if (url) {
+                navigator.clipboard.writeText(url).then(() => {
+                    btn.textContent = '✓ Copied!';
+                    btn.style.background = '#4CAF50';
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.style.background = '#2196F3';
+                    }, 2000);
+                }).catch(() => {
+                    showMessage('Failed to copy link', 'error');
+                });
+            }
+        }
     </script>
 </body>
 </html>
