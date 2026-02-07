@@ -599,7 +599,7 @@
             }
             
             const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const tax = subtotal * 0.05;
+            const tax = subtotal * 0.18;  // 18% tax
             const total = subtotal + tax;
             
             const orderData = {
@@ -620,11 +620,9 @@
                 
                 const data = await response.json();
                 if (data.success) {
-                    alert('Order placed successfully!');
-                    cartItems = [];
-                    updateCart();
-                    // Redirect to order confirmation
-                    window.location.href = `/order-confirmation?order_id=${data.order_id}`;
+                    alert('Order placed successfully! Redirecting to order tracking...');
+                    // Redirect to order tracking page
+                    window.location.href = `/order-tracking?table=${tableNumber}&hotel=${hotelSlug}&session_id=${data.session_id}`;
                 } else {
                     alert('Error placing order: ' + data.error);
                 }

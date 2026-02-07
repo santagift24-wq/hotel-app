@@ -15,6 +15,7 @@ import string
 from functools import wraps
 from io import BytesIO
 import qrcode
+from uuid import uuid4
 from PIL import Image, ImageDraw, ImageFont
 from werkzeug.security import generate_password_hash, check_password_hash
 import random
@@ -1264,8 +1265,20 @@ def init_db():
             total REAL,
             status TEXT DEFAULT 'pending',
             assigned_to INTEGER,
+            order_group TEXT,
+            reorder_number INTEGER DEFAULT 0,
+            session_id TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''')
+        
+        # Add missing columns if they don't exist
+        try:
+            c.execute('ALTER TABLE orders ADD COLUMN order_group TEXT')
+            c.execute('ALTER TABLE orders ADD COLUMN reorder_number INTEGER DEFAULT 0')
+            c.execute('ALTER TABLE orders ADD COLUMN session_id TEXT')
+            conn.commit()
+        except:
+            pass
         
         # Sub-admins table
         c.execute('''CREATE TABLE IF NOT EXISTS sub_admins (
@@ -3609,8 +3622,224 @@ def save_table():
 
 @app.route('/order')
 def customer_order_page():
-    """Customer order page (what they see after scanning QR)"""
+    """Customer order page - for placing new orders"""
     return render_template('customer_order.html')
+
+@app.route('/order-tracking')
+def order_tracking_page():
+    """Order tracking page - shows live status for customer"""
+    return render_template('customer_order_tracking.html')
+
+@app.route('/api/track-order')
+def track_order():
+    """Get current order status for customer (for live dashboard)"""
+    try:
+        table_number = request.args.get('table')
+        hotel_slug = request.args.get('hotel')
+        session_id = request.args.get('session_id')
+        
+        if not table_number or not hotel_slug:
+            return jsonify({'success': False, 'error': 'Missing parameters'}), 400
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get hotel ID from slug
+        c.execute('SELECT id FROM settings WHERE hotel_slug = ?', (hotel_slug,))
+        hotel = c.fetchone()
+        if not hotel:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Hotel not found'}), 404
+        
+        # Get all orders for this table (grouped by order_group)
+        c.execute('''SELECT order_group, status, SUM(total) as total, COUNT(*) as order_count
+                    FROM orders 
+                    WHERE hotel_id = ? AND table_number = ? AND order_group IS NOT NULL
+                    GROUP BY order_group
+                    ORDER BY created_at DESC''',
+                 (hotel['id'], table_number))
+        
+        orders = c.fetchall()
+        
+        # Get items for each order
+        result_orders = []
+        for order in orders:
+            c.execute('''SELECT items, reorder_number, status, created_at
+                        FROM orders 
+                        WHERE order_group = ?
+                        ORDER BY reorder_number''',
+                     (order['order_group'],))
+            
+            order_items = []
+            for item_row in c.fetchall():
+                try:
+                    items_list = json.loads(item_row['items'])
+                    order_items.append({
+                        'reorder_number': item_row['reorder_number'],
+                        'items': items_list,
+                        'created_at': item_row['created_at']
+                    })
+                except:
+                    pass
+            
+            result_orders.append({
+                'order_group': order['order_group'],
+                'status': order['status'],
+                'total': order['total'],
+                'items': order_items
+            })
+        
+        conn.close()
+        return jsonify({'success': True, 'orders': result_orders})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/reorder', methods=['POST'])
+def reorder():
+    """Add items as reorder to existing order"""
+    try:
+        data = request.get_json()
+        table_number = data.get('table_number')
+        hotel_slug = data.get('hotel_slug')
+        items = data.get('items')
+        subtotal = data.get('subtotal')
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get hotel ID
+        c.execute('SELECT id FROM settings WHERE hotel_slug = ?', (hotel_slug,))
+        hotel = c.fetchone()
+        if not hotel:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Hotel not found'}), 404
+        
+        # Get latest order group for this table
+        c.execute('''SELECT order_group FROM orders 
+                    WHERE hotel_id = ? AND table_number = ?
+                    ORDER BY created_at DESC LIMIT 1''',
+                 (hotel['id'], table_number))
+        
+        latest = c.fetchone()
+        order_group = latest['order_group'] if latest else str(uuid4())
+        
+        # Get next reorder number
+        c.execute('''SELECT MAX(reorder_number) as max_reorder 
+                    FROM orders WHERE order_group = ?''',
+                 (order_group,))
+        
+        max_reorder = c.fetchone()
+        next_reorder = (max_reorder['max_reorder'] or 0) + 1
+        
+        # Add reorder
+        tax = subtotal * 0.18  # 18% tax
+        total = subtotal + tax
+        
+        c.execute('''INSERT INTO orders 
+                    (hotel_id, table_number, items, subtotal, tax, total, 
+                     status, order_group, reorder_number)
+                    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)''',
+                 (hotel['id'], table_number, json.dumps(items),
+                  subtotal, tax, total, order_group, next_reorder))
+        
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': f'Reorder {next_reorder} added!'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/get-bill')
+def get_bill():
+    """Get combined bill for all orders (original + reorders)"""
+    try:
+        table_number = request.args.get('table')
+        hotel_slug = request.args.get('hotel')
+        
+        if not table_number or not hotel_slug:
+            return jsonify({'success': False, 'error': 'Missing parameters'}), 400
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get hotel info
+        c.execute('SELECT * FROM settings WHERE hotel_slug = ?', (hotel_slug,))
+        hotel = c.fetchone()
+        if not hotel:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Hotel not found'}), 404
+        
+        # Get all orders for this table
+        c.execute('''SELECT * FROM orders 
+                    WHERE hotel_id = ? AND table_number = ?
+                    ORDER BY order_group, reorder_number''',
+                 (hotel['id'], table_number))
+        
+        orders = c.fetchall()
+        conn.close()
+        
+        if not orders:
+            return jsonify({'success': False, 'error': 'No orders found'}), 404
+        
+        # Group by order_group
+        bill_items = {}
+        total_amount = 0
+        
+        for order in orders:
+            group = order['order_group'] or 'original'
+            reorder_num = order['reorder_number'] or 0
+            
+            if group not in bill_items:
+                bill_items[group] = {'reorder': reorder_num, 'items': []}
+            
+            try:
+                items = json.loads(order['items'])
+                bill_items[group]['items'].extend(items)
+            except:
+                pass
+            
+            total_amount += order['total']
+        
+        return jsonify({
+            'success': True,
+            'hotel_name': hotel['hotel_name'],
+            'table_number': table_number,
+            'bill_items': bill_items,
+            'total_amount': total_amount,
+            'print_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/print-bill', methods=['POST'])
+def print_bill():
+    """Mark bill as printed and clear session"""
+    try:
+        data = request.get_json()
+        table_number = data.get('table_number')
+        hotel_slug = data.get('hotel_slug')
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get hotel ID
+        c.execute('SELECT id FROM settings WHERE hotel_slug = ?', (hotel_slug,))
+        hotel = c.fetchone()
+        
+        if hotel:
+            # Mark all orders as completed
+            c.execute('''UPDATE orders SET status = 'completed'
+                        WHERE hotel_id = ? AND table_number = ?''',
+                     (hotel['id'], table_number))
+            conn.commit()
+        
+        conn.close()
+        return jsonify({'success': True, 'message': 'Bill printed. Session cleared.'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/get-store-info')
 def get_store_info():
@@ -3660,19 +3889,26 @@ def place_order_api():
         if not hotel:
             return jsonify({'success': False, 'error': 'Hotel not found'})
         
-        # Create order
+        # Generate order group (to group original + reorders)
+        order_group = str(uuid4())
+        session_id = data.get('session_id') or str(uuid4())
+        
+        # Create order as original order (reorder_number = 0)
         c.execute('''INSERT INTO orders 
-                    (hotel_id, table_number, items, subtotal, tax, total, status)
-                    VALUES (?, ?, ?, ?, ?, ?, 'pending')''',
+                    (hotel_id, table_number, items, subtotal, tax, total, 
+                     status, order_group, reorder_number, session_id)
+                    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, 0, ?)''',
                  (hotel['id'], data.get('table_number'),
                   data.get('items'), data.get('subtotal'),
-                  data.get('tax'), data.get('total')))
+                  data.get('tax'), data.get('total'),
+                  order_group, session_id))
         
         conn.commit()
         order_id = c.lastrowid
         conn.close()
         
-        return jsonify({'success': True, 'order_id': order_id})
+        return jsonify({'success': True, 'order_id': order_id, 
+                       'order_group': order_group, 'session_id': session_id})
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
