@@ -4169,6 +4169,132 @@ def api_toggle_service(store_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+# ============================================================================
+# PASSWORD MANAGEMENT FOR SUPERADMIN
+# ============================================================================
+
+@app.route('/superadmin/password-management')
+def superadmin_password_management():
+    """Password management page for superadmin"""
+    if not session.get('is_superadmin'):
+        return redirect(url_for('superadmin_login'))
+    
+    return render_template('superadmin_password_management.html')
+
+@app.route('/superadmin/api/hotel/<int:hotel_id>/password-info', methods=['GET'])
+def api_get_hotel_password_info(hotel_id):
+    """Get hotel information for password recovery"""
+    if not session.get('is_superadmin'):
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    
+    try:
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('SELECT id, hotel_name, owner_email, owner_password FROM settings WHERE id = ?', (hotel_id,))
+        hotel = c.fetchone()
+        conn.close()
+        
+        if not hotel:
+            return jsonify({'success': False, 'error': 'Hotel not found'})
+        
+        from werkzeug.security import check_password_hash
+        
+        return jsonify({
+            'success': True,
+            'hotel': {
+                'id': hotel['id'],
+                'hotel_name': hotel['hotel_name'],
+                'owner_email': hotel['owner_email'],
+                'has_password': bool(hotel['owner_password'])
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/superadmin/api/hotel/<int:hotel_id>/show-password', methods=['POST'])
+def api_show_hotel_password(hotel_id):
+    """Show (view) the old password for a hotel - for password recovery assistance"""
+    if not session.get('is_superadmin'):
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    
+    try:
+        data = request.get_json()
+        confirm_show = data.get('confirm', False)
+        
+        if not confirm_show:
+            return jsonify({'success': False, 'error': 'Confirmation required'})
+        
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('SELECT id, hotel_name, owner_email, owner_password FROM settings WHERE id = ?', (hotel_id,))
+        hotel = c.fetchone()
+        conn.close()
+        
+        if not hotel:
+            return jsonify({'success': False, 'error': 'Hotel not found'})
+        
+        # Log this action for security audit
+        print(f"[SECURITY] Superadmin viewed password for hotel '{hotel['hotel_name']}' (ID: {hotel_id})")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Password shown to user via superadmin',
+            'hotel': {
+                'id': hotel['id'],
+                'hotel_name': hotel['hotel_name'],
+                'owner_email': hotel['owner_email'],
+                'owner_password': hotel['owner_password']
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/superadmin/api/hotel/<int:hotel_id>/reset-password', methods=['POST'])
+def api_reset_hotel_password(hotel_id):
+    """Reset password for a hotel - superadmin creates new password"""
+    if not session.get('is_superadmin'):
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    
+    try:
+        data = request.get_json()
+        new_password = data.get('new_password', '').strip()
+        
+        if not new_password or len(new_password) < 6:
+            return jsonify({'success': False, 'error': 'Password must be at least 6 characters'})
+        
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('SELECT id, hotel_name, owner_email FROM settings WHERE id = ?', (hotel_id,))
+        hotel = c.fetchone()
+        
+        if not hotel:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Hotel not found'})
+        
+        from werkzeug.security import generate_password_hash
+        hashed_password = generate_password_hash(new_password)
+        
+        c.execute('UPDATE settings SET owner_password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                 (hashed_password, hotel_id))
+        conn.commit()
+        conn.close()
+        
+        # Log this action for security audit
+        print(f"[SECURITY] Superadmin reset password for hotel '{hotel['hotel_name']}' (ID: {hotel_id})")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Password successfully reset',
+            'new_password': new_password,
+            'hotel': {
+                'id': hotel['id'],
+                'hotel_name': hotel['hotel_name'],
+                'owner_email': hotel['owner_email']
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     try:
