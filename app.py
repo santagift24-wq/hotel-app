@@ -2735,12 +2735,18 @@ def order_page(table_id):
     conn = get_db()
     c = conn.cursor()
     
-    # Get table info
-    c.execute('SELECT * FROM restaurant_tables WHERE id = ?', (table_id,))
+    # Get table info from table_details
+    c.execute('SELECT * FROM table_details WHERE id = ?', (table_id,))
     table = c.fetchone()
     
     if not table:
-        return "Table not found", 404
+        # Try to get from restaurant_tables (fallback for compatibility)
+        c.execute('SELECT * FROM restaurant_tables WHERE id = ?', (table_id,))
+        table = c.fetchone()
+        
+        if not table:
+            conn.close()
+            return "Table not found", 404
     
     # Get hotel_id from table
     hotel_id = table['hotel_id'] if table else 1
@@ -2749,14 +2755,24 @@ def order_page(table_id):
     c.execute('SELECT * FROM menu_items WHERE hotel_id = ? AND is_available = 1 ORDER BY category, name', (hotel_id,))
     menu_items = c.fetchall()
     
-    # Get hotel settings for THIS HOTEL
-    c.execute('SELECT hotel_name FROM settings WHERE id = ?', (hotel_id,))
+    # Get hotel settings and profile info
+    c.execute('SELECT * FROM settings WHERE id = ?', (hotel_id,))
     settings = c.fetchone()
+    
+    c.execute('SELECT logo_url, store_description, cuisine_type FROM store_profiles WHERE hotel_id = ?', (hotel_id,))
+    store_profile = c.fetchone()
+    
     hotel_name = settings['hotel_name'] if settings else 'Royal Restaurant'
+    logo_url = store_profile['logo_url'] if store_profile else None
     
     conn.close()
     
-    return render_template('customer/order.html', table_id=table_id, menu_items=menu_items, hotel_name=hotel_name)
+    return render_template('customer/order.html', 
+                         table_id=table_id, 
+                         menu_items=menu_items, 
+                         hotel_name=hotel_name,
+                         logo_url=logo_url,
+                         store_profile=store_profile)
 
 # ============================================================================
 # API ROUTES
