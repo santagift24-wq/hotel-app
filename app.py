@@ -3399,6 +3399,111 @@ def table_management_page():
     """Display table management page"""
     return render_template('admin/table_management.html')
 
+@app.route('/api/get-tables')
+@login_required
+def api_get_tables():
+    """Get all tables for current hotel"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get tables from restaurant_tables
+        c.execute('SELECT id, hotel_id, table_number, is_active FROM restaurant_tables WHERE hotel_id = ? ORDER BY table_number', 
+                 (hotel_id,))
+        tables = c.fetchall()
+        conn.close()
+        
+        # Convert to dict format
+        tables_list = []
+        for table in tables:
+            tables_list.append({
+                'id': table['id'],
+                'table_number': table['table_number'],
+                'table_section': 'Main',
+                'capacity': 4,
+                'table_status': 'available' if table['is_active'] else 'closed',
+                'assigned_waiter': '',
+                'notes': ''
+            })
+        
+        return jsonify({'success': True, 'tables': tables_list})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/save-table', methods=['POST'])
+@login_required
+def api_save_table():
+    """Save or create a table"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        data = request.get_json()
+        table_number = data.get('table_number', type=int)
+        table_id = data.get('id')
+        
+        if not table_number:
+            return jsonify({'success': False, 'error': 'Table number is required'})
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        try:
+            if table_id:
+                # Update existing table
+                c.execute('UPDATE restaurant_tables SET table_number = ? WHERE id = ? AND hotel_id = ?',
+                         (table_number, table_id, hotel_id))
+            else:
+                # Create new table
+                c.execute('INSERT INTO restaurant_tables (hotel_id, table_number, is_active) VALUES (?, ?, ?)',
+                         (hotel_id, table_number, 1))
+            
+            conn.commit()
+            conn.close()
+            
+            return jsonify({'success': True, 'message': 'Table saved successfully'})
+        except sqlite3.IntegrityError:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Table number already exists'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/delete-table/<int:table_id>', methods=['DELETE'])
+@login_required
+def api_delete_table(table_id):
+    """Delete a table"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Verify table belongs to this hotel
+        c.execute('SELECT hotel_id FROM restaurant_tables WHERE id = ?', (table_id,))
+        table = c.fetchone()
+        
+        if not table or table['hotel_id'] != hotel_id:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Table not found'}), 404
+        
+        # Delete the table
+        c.execute('DELETE FROM restaurant_tables WHERE id = ?', (table_id,))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Table deleted successfully'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/update-store-profile', methods=['POST'])
 @login_required
 def update_store_profile():

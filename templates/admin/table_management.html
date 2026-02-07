@@ -589,6 +589,9 @@
                             <button class="btn-qr" onclick="showQRCode(${table.table_number})">
                                 <i class="fas fa-qrcode"></i> QR Code
                             </button>
+                            <button class="btn-danger" onclick="deleteTable(${table.id})">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -654,9 +657,9 @@
         
         async function saveTable() {
             const formData = {
-                table_number: document.getElementById('tableNum').value,
+                table_number: parseInt(document.getElementById('tableNum').value),
                 table_section: document.getElementById('tableSection').value,
-                capacity: document.getElementById('tableCapacity').value,
+                capacity: parseInt(document.getElementById('tableCapacity').value),
                 table_status: document.getElementById('tableStatus').value,
                 assigned_waiter: document.getElementById('assignedWaiter').value,
                 notes: document.getElementById('tableNotes').value,
@@ -676,6 +679,28 @@
                     loadTables();
                 } else {
                     alert('Error saving table: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error);
+            }
+        }
+        
+        async function deleteTable(tableId) {
+            if (!confirm('Are you sure you want to delete this table? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/delete-table/${tableId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    loadTables();
+                } else {
+                    alert('Error deleting table: ' + data.error);
                 }
             } catch (error) {
                 alert('Error: ' + error);
