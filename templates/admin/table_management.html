@@ -586,6 +586,7 @@
     <script>
         let tablesList = [];
         let currentEditingTable = null;
+        window.hotelSlug = '{{ hotel_slug | default("default") }}';
         
         // Load tables
         async function loadTables() {

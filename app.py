@@ -2647,6 +2647,49 @@ def api_get_menu():
     
     return jsonify({'success': True, 'items': items})
 
+@app.route('/api/get-menu', methods=['GET'])
+def api_get_menu_by_hotel():
+    """Get menu items by hotel slug or table number"""
+    hotel_slug = request.args.get('hotel')
+    table_number = request.args.get('table', type=int)
+    
+    conn = get_db()
+    c = conn.cursor()
+    
+    hotel_id = None
+    
+    # Try to get hotel_id from slug first
+    if hotel_slug:
+        c.execute('SELECT id FROM settings WHERE hotel_slug = ?', (hotel_slug,))
+        result = c.fetchone()
+        if result:
+            hotel_id = result['id']
+    
+    # If no hotel found by slug, try to get from table
+    if not hotel_id and table_number:
+        c.execute('SELECT hotel_id FROM restaurant_tables WHERE table_number = ?', (table_number,))
+        result = c.fetchone()
+        if result:
+            hotel_id = result['hotel_id']
+    
+    # If still no hotel_id, try to get the first hotel
+    if not hotel_id:
+        c.execute('SELECT id FROM settings LIMIT 1')
+        result = c.fetchone()
+        if result:
+            hotel_id = result['id']
+    
+    if not hotel_id:
+        conn.close()
+        return jsonify({'success': False, 'error': 'No store found', 'menu': []})
+    
+    # Get menu items for this hotel
+    c.execute('SELECT * FROM menu_items WHERE hotel_id = ? ORDER BY category, name', (hotel_id,))
+    items = [dict(row) for row in c.fetchall()]
+    conn.close()
+    
+    return jsonify({'success': True, 'menu': items, 'hotel_id': hotel_id})
+
 @app.route('/api/order/place', methods=['POST'])
 def place_order():
     """Place order"""
@@ -3298,7 +3341,14 @@ def store_profile_page():
 @login_required
 def table_management_page():
     """Display table management page"""
-    return render_template('admin/table_management.html')
+    hotel_id = get_current_hotel_id()
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT hotel_slug FROM settings WHERE id = ?', (hotel_id,))
+    result = c.fetchone()
+    hotel_slug = result['hotel_slug'] if result else 'default'
+    conn.close()
+    return render_template('admin/table_management.html', hotel_slug=hotel_slug)
 
 @app.route('/api/get-tables')
 @login_required
