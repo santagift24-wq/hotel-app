@@ -27,7 +27,7 @@ COPY . .
 RUN mkdir -p static/store_photos static/menu_images static/qr_codes
 
 # Expose port
-EXPOSE 5000
+EXPOSE $PORT
 
-# Run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "8", "--timeout", "120", "app:app"]
+# Run the application with PORT variable expansion
+CMD sh -c "gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 1 --threads 8 --timeout 120 app:app"

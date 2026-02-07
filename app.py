@@ -15,6 +15,7 @@ import string
 from functools import wraps
 from io import BytesIO
 import qrcode
+from uuid import uuid4
 from PIL import Image, ImageDraw, ImageFont
 from werkzeug.security import generate_password_hash, check_password_hash
 import random
@@ -1276,8 +1277,20 @@ def init_db():
             total REAL,
             status TEXT DEFAULT 'pending',
             assigned_to INTEGER,
+            order_group TEXT,
+            reorder_number INTEGER DEFAULT 0,
+            session_id TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''')
+        
+        # Add missing columns if they don't exist
+        try:
+            c.execute('ALTER TABLE orders ADD COLUMN order_group TEXT')
+            c.execute('ALTER TABLE orders ADD COLUMN reorder_number INTEGER DEFAULT 0')
+            c.execute('ALTER TABLE orders ADD COLUMN session_id TEXT')
+            conn.commit()
+        except:
+            pass
         
         # Sub-admins table
         c.execute('''CREATE TABLE IF NOT EXISTS sub_admins (
@@ -1462,6 +1475,24 @@ def init_db():
         
         try:
             c.execute('ALTER TABLE settings ADD COLUMN owner_verified INTEGER DEFAULT 0')
+            conn.commit()
+        except:
+            pass
+        
+        try:
+            c.execute('ALTER TABLE store_profiles ADD COLUMN rating REAL DEFAULT 0')
+            conn.commit()
+        except:
+            pass
+        
+        try:
+            c.execute('ALTER TABLE store_profiles ADD COLUMN review_count INTEGER DEFAULT 0')
+            conn.commit()
+        except:
+            pass
+        
+        try:
+            c.execute('ALTER TABLE store_profiles ADD COLUMN review_summary TEXT')
             conn.commit()
         except:
             pass
@@ -2057,6 +2088,59 @@ def dashboard_custom_summary():
 def admin_tables():
     """Redirect old tables route to new table management page"""
     return redirect(url_for('table_management_page'))
+            
+            # Create a larger image with QR code and table number text
+            qr_size = qr_image.size[0]
+            # Create new image with space for text below QR code
+            final_image = Image.new('RGB', (qr_size, qr_size + 60), color='white')
+            final_image.paste(qr_image, (0, 0))
+            
+            # Add table number text below QR code
+            draw = ImageDraw.Draw(final_image)
+            try:
+                # Try to use a default font
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
+            except:
+                # Fallback to default font if truetype not available
+                font = ImageFont.load_default()
+            
+            # Draw table number text
+            text = f"TABLE {table_number}"
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_x = (qr_size - text_width) // 2
+            text_y = qr_size + 15
+            draw.text((text_x, text_y), text, fill='black', font=font)
+            
+            # Ensure static/qr_codes directory exists
+            qr_dir = os.path.join('static', 'qr_codes')
+            if not os.path.exists(qr_dir):
+                os.makedirs(qr_dir)
+            
+            # Save QR code image with table number
+            qr_filename = f"table_{table_number}_qr.png"
+            qr_path = os.path.join(qr_dir, qr_filename)
+            final_image.save(qr_path)
+            
+            # Update the table with the QR filename
+            c.execute('UPDATE restaurant_tables SET qr_code = ? WHERE id = ?',
+                     (qr_filename, table_id))
+            conn.commit()
+            conn.close()
+            
+            return redirect(url_for('admin_tables'))
+        except sqlite3.IntegrityError:
+            conn.close()
+            return redirect(url_for('admin_tables'))
+    
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT * FROM restaurant_tables WHERE hotel_id = ? ORDER BY table_number', (hotel_id,))
+    tables = c.fetchall()
+    conn.close()
+    
+    return render_template('admin/tables.html', tables=tables)
+>>>>>>> 4991c2e2a17a385cfeba8f6a0cf3684046de07b6
 
 @app.route('/qr/download/<int:table_id>')
 @login_required
@@ -2696,12 +2780,18 @@ def order_page(table_id):
     conn = get_db()
     c = conn.cursor()
     
-    # Get table info
-    c.execute('SELECT * FROM restaurant_tables WHERE id = ?', (table_id,))
+    # Get table info from table_details
+    c.execute('SELECT * FROM table_details WHERE id = ?', (table_id,))
     table = c.fetchone()
     
     if not table:
-        return "Table not found", 404
+        # Try to get from restaurant_tables (fallback for compatibility)
+        c.execute('SELECT * FROM restaurant_tables WHERE id = ?', (table_id,))
+        table = c.fetchone()
+        
+        if not table:
+            conn.close()
+            return "Table not found", 404
     
     # Get hotel_id from table
     hotel_id = table['hotel_id'] if table else 1
@@ -2710,14 +2800,24 @@ def order_page(table_id):
     c.execute('SELECT * FROM menu_items WHERE hotel_id = ? AND is_available = 1 ORDER BY category, name', (hotel_id,))
     menu_items = c.fetchall()
     
-    # Get hotel settings for THIS HOTEL
-    c.execute('SELECT hotel_name FROM settings WHERE id = ?', (hotel_id,))
+    # Get hotel settings and profile info
+    c.execute('SELECT * FROM settings WHERE id = ?', (hotel_id,))
     settings = c.fetchone()
+    
+    c.execute('SELECT logo_url, store_description, cuisine_type FROM store_profiles WHERE hotel_id = ?', (hotel_id,))
+    store_profile = c.fetchone()
+    
     hotel_name = settings['hotel_name'] if settings else 'Royal Restaurant'
+    logo_url = store_profile['logo_url'] if store_profile else None
     
     conn.close()
     
-    return render_template('customer/order.html', table_id=table_id, menu_items=menu_items, hotel_name=hotel_name)
+    return render_template('customer/order.html', 
+                         table_id=table_id, 
+                         menu_items=menu_items, 
+                         hotel_name=hotel_name,
+                         logo_url=logo_url,
+                         store_profile=store_profile)
 
 # ============================================================================
 # API ROUTES
@@ -3599,6 +3699,64 @@ def api_create_tables_bulk():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/get-store-profile', methods=['GET'])
+@login_required
+def get_store_profile():
+    """Get complete store profile information"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get settings
+        c.execute('SELECT * FROM settings WHERE id = ?', (hotel_id,))
+        settings = c.fetchone()
+        
+        # Get store profile
+        c.execute('SELECT * FROM store_profiles WHERE hotel_id = ?', (hotel_id,))
+        profile = c.fetchone()
+        
+        # Get website appearance
+        c.execute('SELECT * FROM store_websites WHERE hotel_id = ?', (hotel_id,))
+        website = c.fetchone()
+        
+        conn.close()
+        
+        data = {
+            'success': True,
+            'basic': {
+                'store_name': settings['hotel_name'] if settings else '',
+                'phone_number': profile['phone_number'] if profile else '',
+                'store_email': profile['store_email'] if profile else '',
+                'street_address': profile['street_address'] if profile else '',
+                'city': profile['city'] if profile else '',
+                'state': profile['state'] if profile else '',
+                'postal_code': profile['postal_code'] if profile else '',
+                'cuisine_type': profile['cuisine_type'] if profile else '',
+                'store_description': profile['store_description'] if profile else ''
+            },
+            'hours': {
+                'open_time': profile['open_time'] if profile else '',
+                'close_time': profile['close_time'] if profile else '',
+                'working_days': profile['working_days'] if profile else '',
+                'holiday_dates': profile['holiday_dates'] if profile else ''
+            },
+            'appearance': {
+                'website_theme': website['website_theme'] if website else 'modern',
+                'website_color': website['website_color'] if website else '#667eea',
+                'website_title': website['website_title'] if website else '',
+                'website_description': website['website_description'] if website else ''
+            }
+        }
+        
+        return jsonify(data)
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/update-store-profile', methods=['POST'])
 @login_required
 def update_store_profile():
@@ -3669,7 +3827,7 @@ def update_store_profile():
 @app.route('/api/upload-store-photos', methods=['POST'])
 @login_required
 def upload_store_photos():
-    """Upload photos to store gallery"""
+    """Upload photos to store gallery (max 30 images)"""
     try:
         hotel_id = get_current_hotel_id()
         if not hotel_id:
@@ -3678,30 +3836,48 @@ def upload_store_photos():
         conn = get_db()
         c = conn.cursor()
         
+        # Check current photo count
+        c.execute('SELECT COUNT(*) as count FROM store_gallery WHERE hotel_id = ?', (hotel_id,))
+        current_count = c.fetchone()['count']
+        
+        if current_count >= 30:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Maximum 30 images allowed. Please delete some images first.'}), 400
+        
         if 'photos' not in request.files:
+            conn.close()
             return jsonify({'success': False, 'error': 'No photos provided'})
         
         files = request.files.getlist('photos')
         uploaded = []
         
-        for file in files:
+        # Calculate remaining slots
+        remaining_slots = 30 - current_count
+        
+        for i, file in enumerate(files):
+            if i >= remaining_slots:
+                break
+                
             if file and file.filename != '':
                 # Save file
-                filename = f"store_{hotel_id}_{int(time.time())}_{file.filename}"
+                filename = f"store_{hotel_id}_{int(time.time())}_{i}_{file.filename}"
                 filepath = os.path.join('static/store_photos', filename)
                 os.makedirs(os.path.dirname(filepath), exist_ok=True)
                 file.save(filepath)
+                
+                # Convert path to web format (forward slashes)
+                web_path = '/static/store_photos/' + filename
                 
                 # Add to gallery
                 c.execute('''INSERT INTO store_gallery 
                             (hotel_id, photo_url, photo_title)
                             VALUES (?, ?, ?)''',
-                         (hotel_id, f'/{filepath}', file.filename))
+                         (hotel_id, web_path, file.filename))
                 uploaded.append(file.filename)
         
         conn.commit()
         conn.close()
-        return jsonify({'success': True, 'uploaded': len(uploaded)})
+        return jsonify({'success': True, 'uploaded': len(uploaded), 'remaining': remaining_slots - len(uploaded)})
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -3735,10 +3911,467 @@ def get_store_photos():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/upload-logo', methods=['POST'])
+@login_required
+def upload_logo():
+    """Upload restaurant logo"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        if 'logo' not in request.files:
+            return jsonify({'success': False, 'message': 'No logo file provided'}), 400
+        
+        file = request.files['logo']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': 'No file selected'}), 400
+        
+        # Validate file type
+        allowed_extensions = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+        if not '.' in file.filename or file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+            return jsonify({'success': False, 'message': 'Invalid file type'}), 400
+        
+        # Validate file size (max 2MB)
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)
+        if file_size > 2 * 1024 * 1024:
+            return jsonify({'success': False, 'message': 'File too large (max 2MB)'}), 400
+        
+        # Create directory if needed
+        os.makedirs('static/logos', exist_ok=True)
+        
+        # Save logo
+        filename = f"logo_{hotel_id}_{int(time.time())}.{file.filename.rsplit('.', 1)[1].lower()}"
+        filepath = os.path.join('static/logos', filename)
+        file.save(filepath)
+        
+        # Convert path to web format (forward slashes)
+        web_path = '/static/logos/' + filename
+        
+        # Update or insert logo in database
+        conn = get_db()
+        c = conn.cursor()
+        
+        c.execute('SELECT id FROM store_profiles WHERE hotel_id = ?', (hotel_id,))
+        if c.fetchone():
+            c.execute('''UPDATE store_profiles SET logo_url = ? WHERE hotel_id = ?''',
+                     (web_path, hotel_id))
+        else:
+            c.execute('''INSERT INTO store_profiles (hotel_id, logo_url) VALUES (?, ?)''',
+                     (hotel_id, web_path))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'logo_url': web_path})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/get-logo')
+@login_required
+def get_logo():
+    """Get restaurant logo"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'logo_url': None}), 401
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        c.execute('SELECT logo_url FROM store_profiles WHERE hotel_id = ?', (hotel_id,))
+        result = c.fetchone()
+        conn.close()
+        
+        if result and result['logo_url']:
+            return jsonify({'logo_url': result['logo_url']})
+        else:
+            return jsonify({'logo_url': None})
+    
+    except Exception as e:
+        return jsonify({'logo_url': None, 'error': str(e)})
+
+@app.route('/api/save-ratings', methods=['POST'])
+@login_required
+def save_ratings():
+    """Save restaurant ratings and review info"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        data = request.get_json()
+        
+        # Validate data
+        rating = data.get('rating')
+        review_count = data.get('review_count', 0)
+        review_summary = data.get('review_summary', '')
+        
+        if rating is None or rating < 0 or rating > 5:
+            return jsonify({'success': False, 'message': 'Invalid rating. Must be 0-5.'}), 400
+        
+        if review_count < 0:
+            return jsonify({'success': False, 'message': 'Review count cannot be negative'}), 400
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Update or insert ratings
+        c.execute('SELECT id FROM store_profiles WHERE hotel_id = ?', (hotel_id,))
+        if c.fetchone():
+            c.execute('''UPDATE store_profiles 
+                        SET rating = ?, review_count = ?, review_summary = ? 
+                        WHERE hotel_id = ?''',
+                     (rating, review_count, review_summary, hotel_id))
+        else:
+            c.execute('''INSERT INTO store_profiles (hotel_id, rating, review_count, review_summary) 
+                        VALUES (?, ?, ?, ?)''',
+                     (hotel_id, rating, review_count, review_summary))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Ratings saved successfully'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/get-ratings')
+@login_required
+def get_ratings():
+    """Get restaurant ratings and review info"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({}), 401
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        c.execute('''SELECT rating, review_count, review_summary 
+                    FROM store_profiles WHERE hotel_id = ?''', (hotel_id,))
+        result = c.fetchone()
+        conn.close()
+        
+        if result:
+            return jsonify({
+                'rating': result['rating'] or 0,
+                'review_count': result['review_count'] or 0,
+                'review_summary': result['review_summary'] or ''
+            })
+        else:
+            return jsonify({
+                'rating': 0,
+                'review_count': 0,
+                'review_summary': ''
+            })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/get-tables')
+@login_required
+def get_tables():
+    """Get all tables for current hotel"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get hotel slug
+        c.execute('SELECT hotel_slug FROM settings WHERE id = ?', (hotel_id,))
+        hotel = c.fetchone()
+        hotel_slug = hotel['hotel_slug'] if hotel else 'default'
+        
+        # Get tables
+        c.execute('''SELECT * FROM table_details WHERE hotel_id = ? 
+                    ORDER BY table_number''', (hotel_id,))
+        
+        tables = []
+        for row in c.fetchall():
+            tables.append({
+                'id': row['id'],
+                'table_number': row['table_number'],
+                'table_section': row['table_section'],
+                'capacity': row['capacity'],
+                'table_status': row['table_status'],
+                'assigned_waiter': row['assigned_waiter'],
+                'notes': row['notes']
+            })
+        
+        conn.close()
+        return jsonify({'success': True, 'tables': tables, 'hotel_slug': hotel_slug})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/save-table', methods=['POST'])
+@login_required
+def save_table():
+    """Save or update a table"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        data = request.get_json()
+        conn = get_db()
+        c = conn.cursor()
+        
+        if data.get('id'):
+            # Update existing table
+            c.execute('''UPDATE table_details 
+                        SET table_section = ?, capacity = ?, 
+                            table_status = ?, assigned_waiter = ?, notes = ?
+                        WHERE id = ? AND hotel_id = ?''',
+                     (data.get('table_section'), data.get('capacity'),
+                      data.get('table_status'), data.get('assigned_waiter'),
+                      data.get('notes'), data.get('id'), hotel_id))
+        else:
+            # Insert new table
+            c.execute('''INSERT INTO table_details 
+                        (hotel_id, table_number, table_section, capacity, 
+                         table_status, assigned_waiter, notes)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                     (hotel_id, data.get('table_number'), 
+                      data.get('table_section'), data.get('capacity'),
+                      data.get('table_status'), data.get('assigned_waiter'),
+                      data.get('notes')))
+        
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+>>>>>>> 4991c2e2a17a385cfeba8f6a0cf3684046de07b6
 @app.route('/order')
 def customer_order_page():
-    """Customer order page (what they see after scanning QR)"""
+    """Customer order page - for placing new orders"""
     return render_template('customer_order.html')
+
+@app.route('/order-tracking')
+def order_tracking_page():
+    """Order tracking page - shows live status for customer"""
+    return render_template('customer_order_tracking.html')
+
+@app.route('/api/track-order')
+def track_order():
+    """Get current order status for customer (for live dashboard)"""
+    try:
+        table_number = request.args.get('table')
+        hotel_slug = request.args.get('hotel')
+        session_id = request.args.get('session_id')
+        
+        if not table_number or not hotel_slug:
+            return jsonify({'success': False, 'error': 'Missing parameters'}), 400
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get hotel ID from slug
+        c.execute('SELECT id FROM settings WHERE hotel_slug = ?', (hotel_slug,))
+        hotel = c.fetchone()
+        if not hotel:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Hotel not found'}), 404
+        
+        # Get all orders for this table (grouped by order_group)
+        c.execute('''SELECT order_group, status, SUM(total) as total, COUNT(*) as order_count
+                    FROM orders 
+                    WHERE hotel_id = ? AND table_number = ? AND order_group IS NOT NULL
+                    GROUP BY order_group
+                    ORDER BY created_at DESC''',
+                 (hotel['id'], table_number))
+        
+        orders = c.fetchall()
+        
+        # Get items for each order
+        result_orders = []
+        for order in orders:
+            c.execute('''SELECT items, reorder_number, status, created_at
+                        FROM orders 
+                        WHERE order_group = ?
+                        ORDER BY reorder_number''',
+                     (order['order_group'],))
+            
+            order_items = []
+            for item_row in c.fetchall():
+                try:
+                    items_list = json.loads(item_row['items'])
+                    order_items.append({
+                        'reorder_number': item_row['reorder_number'],
+                        'items': items_list,
+                        'created_at': item_row['created_at']
+                    })
+                except:
+                    pass
+            
+            result_orders.append({
+                'order_group': order['order_group'],
+                'status': order['status'],
+                'total': order['total'],
+                'items': order_items
+            })
+        
+        conn.close()
+        return jsonify({'success': True, 'orders': result_orders})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/reorder', methods=['POST'])
+def reorder():
+    """Add items as reorder to existing order"""
+    try:
+        data = request.get_json()
+        table_number = data.get('table_number')
+        hotel_slug = data.get('hotel_slug')
+        items = data.get('items')
+        subtotal = data.get('subtotal')
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get hotel ID
+        c.execute('SELECT id FROM settings WHERE hotel_slug = ?', (hotel_slug,))
+        hotel = c.fetchone()
+        if not hotel:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Hotel not found'}), 404
+        
+        # Get latest order group for this table
+        c.execute('''SELECT order_group FROM orders 
+                    WHERE hotel_id = ? AND table_number = ?
+                    ORDER BY created_at DESC LIMIT 1''',
+                 (hotel['id'], table_number))
+        
+        latest = c.fetchone()
+        order_group = latest['order_group'] if latest else str(uuid4())
+        
+        # Get next reorder number
+        c.execute('''SELECT MAX(reorder_number) as max_reorder 
+                    FROM orders WHERE order_group = ?''',
+                 (order_group,))
+        
+        max_reorder = c.fetchone()
+        next_reorder = (max_reorder['max_reorder'] or 0) + 1
+        
+        # Add reorder
+        tax = subtotal * 0.18  # 18% tax
+        total = subtotal + tax
+        
+        c.execute('''INSERT INTO orders 
+                    (hotel_id, table_number, items, subtotal, tax, total, 
+                     status, order_group, reorder_number)
+                    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)''',
+                 (hotel['id'], table_number, json.dumps(items),
+                  subtotal, tax, total, order_group, next_reorder))
+        
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': f'Reorder {next_reorder} added!'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/get-bill')
+def get_bill():
+    """Get combined bill for all orders (original + reorders)"""
+    try:
+        table_number = request.args.get('table')
+        hotel_slug = request.args.get('hotel')
+        
+        if not table_number or not hotel_slug:
+            return jsonify({'success': False, 'error': 'Missing parameters'}), 400
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get hotel info
+        c.execute('SELECT * FROM settings WHERE hotel_slug = ?', (hotel_slug,))
+        hotel = c.fetchone()
+        if not hotel:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Hotel not found'}), 404
+        
+        # Get all orders for this table
+        c.execute('''SELECT * FROM orders 
+                    WHERE hotel_id = ? AND table_number = ?
+                    ORDER BY order_group, reorder_number''',
+                 (hotel['id'], table_number))
+        
+        orders = c.fetchall()
+        conn.close()
+        
+        if not orders:
+            return jsonify({'success': False, 'error': 'No orders found'}), 404
+        
+        # Group by order_group
+        bill_items = {}
+        total_amount = 0
+        
+        for order in orders:
+            group = order['order_group'] or 'original'
+            reorder_num = order['reorder_number'] or 0
+            
+            if group not in bill_items:
+                bill_items[group] = {'reorder': reorder_num, 'items': []}
+            
+            try:
+                items = json.loads(order['items'])
+                bill_items[group]['items'].extend(items)
+            except:
+                pass
+            
+            total_amount += order['total']
+        
+        return jsonify({
+            'success': True,
+            'hotel_name': hotel['hotel_name'],
+            'table_number': table_number,
+            'bill_items': bill_items,
+            'total_amount': total_amount,
+            'print_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/print-bill', methods=['POST'])
+def print_bill():
+    """Mark bill as printed and clear session"""
+    try:
+        data = request.get_json()
+        table_number = data.get('table_number')
+        hotel_slug = data.get('hotel_slug')
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get hotel ID
+        c.execute('SELECT id FROM settings WHERE hotel_slug = ?', (hotel_slug,))
+        hotel = c.fetchone()
+        
+        if hotel:
+            # Mark all orders as completed
+            c.execute('''UPDATE orders SET status = 'completed'
+                        WHERE hotel_id = ? AND table_number = ?''',
+                     (hotel['id'], table_number))
+            conn.commit()
+        
+        conn.close()
+        return jsonify({'success': True, 'message': 'Bill printed. Session cleared.'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/get-store-info')
 def get_store_info():
@@ -3788,19 +4421,26 @@ def place_order_api():
         if not hotel:
             return jsonify({'success': False, 'error': 'Hotel not found'})
         
-        # Create order
+        # Generate order group (to group original + reorders)
+        order_group = str(uuid4())
+        session_id = data.get('session_id') or str(uuid4())
+        
+        # Create order as original order (reorder_number = 0)
         c.execute('''INSERT INTO orders 
-                    (hotel_id, table_number, items, subtotal, tax, total, status)
-                    VALUES (?, ?, ?, ?, ?, ?, 'pending')''',
+                    (hotel_id, table_number, items, subtotal, tax, total, 
+                     status, order_group, reorder_number, session_id)
+                    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, 0, ?)''',
                  (hotel['id'], data.get('table_number'),
                   data.get('items'), data.get('subtotal'),
-                  data.get('tax'), data.get('total')))
+                  data.get('tax'), data.get('total'),
+                  order_group, session_id))
         
         conn.commit()
         order_id = c.lastrowid
         conn.close()
         
-        return jsonify({'success': True, 'order_id': order_id})
+        return jsonify({'success': True, 'order_id': order_id, 
+                       'order_group': order_group, 'session_id': session_id})
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
