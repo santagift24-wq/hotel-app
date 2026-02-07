@@ -3528,7 +3528,10 @@ def api_save_table():
             return jsonify({'success': False, 'error': 'Not authenticated'}), 401
         
         data = request.get_json()
-        table_number = data.get('table_number', type=int)
+        try:
+            table_number = int(data.get('table_number', 0))
+        except (ValueError, TypeError):
+            table_number = None
         table_id = data.get('id')
         
         if not table_number:
