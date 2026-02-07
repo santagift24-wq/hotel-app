@@ -1014,21 +1014,51 @@
             });
         }
         
-        // Load initial data
-        window.addEventListener('load', function() {
-            loadPhotoGallery();
-            loadLogo();
-            loadRatings();
-            
-            // Rating change handler
-            document.getElementById('rating').addEventListener('change', function() {
-                const rating = parseFloat(this.value);
-                if (rating >= 0) {
-                    document.getElementById('ratingDisplay').textContent = '★ ' + rating.toFixed(1);
-                    document.getElementById('ratingDisplay').style.color = rating > 3 ? '#FFB800' : '#999';
+        // Load store profile data from server
+        function loadStoreProfile() {
+            fetch('/api/get-store-profile')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Load basic info
+                    if (data.basic) {
+                        document.getElementById('storeName').value = data.basic.store_name || '';
+                        document.getElementById('phoneNumber').value = data.basic.phone_number || '';
+                        document.getElementById('storeEmail').value = data.basic.store_email || '';
+                        document.getElementById('streetAddress').value = data.basic.street_address || '';
+                        document.getElementById('city').value = data.basic.city || '';
+                        document.getElementById('state').value = data.basic.state || '';
+                        document.getElementById('postalCode').value = data.basic.postal_code || '';
+                        document.getElementById('cuisineType').value = data.basic.cuisine_type || '';
+                        document.getElementById('storeDescription').value = data.basic.store_description || '';
+                    }
+                    
+                    // Load hours info
+                    if (data.hours) {
+                        document.getElementById('openTime').value = data.hours.open_time || '';
+                        document.getElementById('closeTime').value = data.hours.close_time || '';
+                        document.getElementById('holidayDates').value = data.hours.holiday_dates || '';
+                        
+                        // Restore working days
+                        if (data.hours.working_days) {
+                            const workingDays = data.hours.working_days.split(',');
+                            document.querySelectorAll('.day-checkbox input').forEach(checkbox => {
+                                checkbox.checked = workingDays.includes(checkbox.value);
+                            });
+                        }
+                    }
+                    
+                    // Load appearance info
+                    if (data.appearance) {
+                        document.getElementById('websiteTheme').value = data.appearance.website_theme || 'modern';
+                        document.getElementById('websiteColor').value = data.appearance.website_color || '#667eea';
+                        document.getElementById('websiteTitle').value = data.appearance.website_title || '';
+                        document.getElementById('websiteDesc').value = data.appearance.website_description || '';
+                    }
                 }
-            });
-        });
+            })
+            .catch(error => console.warn('Could not load store profile:', error));
+        }
         
         // Get store website URL
         async function getStoreWebsiteUrl() {
@@ -1081,6 +1111,23 @@
                 });
             }
         }
+        
+        // Load all data when page loads
+        window.addEventListener('load', function() {
+            loadStoreProfile();
+            loadPhotoGallery();
+            loadLogo();
+            loadRatings();
+            
+            // Rating change handler
+            document.getElementById('rating').addEventListener('change', function() {
+                const rating = parseFloat(this.value);
+                if (rating >= 0) {
+                    document.getElementById('ratingDisplay').textContent = '★ ' + rating.toFixed(1);
+                    document.getElementById('ratingDisplay').style.color = rating > 3 ? '#FFB800' : '#999';
+                }
+            });
+        });
     </script>
 </body>
 </html>

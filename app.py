@@ -3435,6 +3435,64 @@ def table_management_page():
     """Display table management page"""
     return render_template('admin/table_management.html')
 
+@app.route('/api/get-store-profile', methods=['GET'])
+@login_required
+def get_store_profile():
+    """Get complete store profile information"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get settings
+        c.execute('SELECT * FROM settings WHERE id = ?', (hotel_id,))
+        settings = c.fetchone()
+        
+        # Get store profile
+        c.execute('SELECT * FROM store_profiles WHERE hotel_id = ?', (hotel_id,))
+        profile = c.fetchone()
+        
+        # Get website appearance
+        c.execute('SELECT * FROM store_websites WHERE hotel_id = ?', (hotel_id,))
+        website = c.fetchone()
+        
+        conn.close()
+        
+        data = {
+            'success': True,
+            'basic': {
+                'store_name': settings['hotel_name'] if settings else '',
+                'phone_number': profile['phone_number'] if profile else '',
+                'store_email': profile['store_email'] if profile else '',
+                'street_address': profile['street_address'] if profile else '',
+                'city': profile['city'] if profile else '',
+                'state': profile['state'] if profile else '',
+                'postal_code': profile['postal_code'] if profile else '',
+                'cuisine_type': profile['cuisine_type'] if profile else '',
+                'store_description': profile['store_description'] if profile else ''
+            },
+            'hours': {
+                'open_time': profile['open_time'] if profile else '',
+                'close_time': profile['close_time'] if profile else '',
+                'working_days': profile['working_days'] if profile else '',
+                'holiday_dates': profile['holiday_dates'] if profile else ''
+            },
+            'appearance': {
+                'website_theme': website['website_theme'] if website else 'modern',
+                'website_color': website['website_color'] if website else '#667eea',
+                'website_title': website['website_title'] if website else '',
+                'website_description': website['website_description'] if website else ''
+            }
+        }
+        
+        return jsonify(data)
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/update-store-profile', methods=['POST'])
 @login_required
 def update_store_profile():
