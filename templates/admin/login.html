@@ -162,7 +162,10 @@
         
         {% if error %}
         <div class="error show">
-            {% if error == 'account_not_found' %}
+            {% if error == 'owner_approval_pending' %}
+                <strong>⏳ Approval Pending</strong><br>
+                Your store is awaiting approval from the system administrator. You will receive an email once approved. Thank you for your patience!
+            {% elif error == 'account_not_found' %}
                 No account exists with that email. <a href="/auth/signup" style="color: #c33; font-weight: 600;">Create account</a>
             {% elif error == 'invalid_credentials' %}
                 Incorrect email/username or password. <a href="/auth/forgot-password" style="color: #c33; font-weight: 600;">Reset password</a>

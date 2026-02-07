@@ -1602,24 +1602,32 @@ def admin_login():
             # Try email-based login first (new system)
             if login_type == 'email' or '@' in email_or_username:
                 # Find all hotels owned by this email
-                c.execute('SELECT id, hotel_name, hotel_slug FROM settings WHERE owner_email = ? AND owner_password IS NOT NULL', (email_or_username,))
+                c.execute('SELECT id, hotel_name, hotel_slug, approval_status FROM settings WHERE owner_email = ? AND owner_password IS NOT NULL', (email_or_username,))
                 hotels = c.fetchall()
                 
                 if hotels:
+                    # Check if at least one hotel is approved
+                    approved_hotels = [h for h in hotels if h['approval_status'] == 'approved']
+                    
+                    if not approved_hotels:
+                        # None approved - show pending message
+                        conn.close()
+                        return render_template('admin/login.html', error='owner_approval_pending')
+                    
                     # Verify password matches any of the hotels (all should have same password)
                     c.execute('SELECT owner_password FROM settings WHERE owner_email = ? LIMIT 1', (email_or_username,))
                     owner = c.fetchone()
                     
                     if owner and check_password_hash(owner['owner_password'], password):
-                        # If user owns multiple hotels, show selection page
-                        if len(hotels) > 1:
+                        # Filter to only approved hotels
+                        if len(approved_hotels) > 1:
                             session['admin_email'] = email_or_username
-                            session['temp_hotels'] = [(h['id'], h['hotel_name'], h['hotel_slug']) for h in hotels]
+                            session['temp_hotels'] = [(h['id'], h['hotel_name'], h['hotel_slug']) for h in approved_hotels]
                             conn.close()
                             return redirect(url_for('select_hotel'))
                         else:
-                            # Single hotel - proceed to dashboard
-                            hotel = hotels[0]
+                            # Single approved hotel - proceed to dashboard
+                            hotel = approved_hotels[0]
                             session['admin_id'] = hotel['id']
                             session['admin_email'] = email_or_username
                             session['hotel_name'] = hotel['hotel_name']
@@ -1741,14 +1749,14 @@ def signup():
         # Note: Removed email uniqueness check to allow one email to manage multiple hotels
         # Email can now create multiple hotel accounts
         
-        # Create new hotel record with initial status
+        # Create new hotel record with initial status (pending owner approval)
         hashed_password = generate_password_hash(password)
         try:
             # Set trial end date to 7 days from now
             trial_end = datetime.now() + timedelta(days=7)
-            c.execute('''INSERT INTO settings (hotel_name, hotel_slug, owner_email, owner_password, owner_verified, subscription_status, trial_ends_at, is_active)
-                         VALUES (?, ?, ?, ?, 0, ?, ?, 1)''',
-                      (hotel_name, hotel_slug, email, hashed_password, 'trial', trial_end))
+            c.execute('''INSERT INTO settings (hotel_name, hotel_slug, owner_email, owner_password, owner_verified, subscription_status, trial_ends_at, is_active, approval_status, contact_email)
+                         VALUES (?, ?, ?, ?, 0, ?, ?, 1, ?, ?)''',
+                      (hotel_name, hotel_slug, email, hashed_password, 'trial', trial_end, 'pending', email))
             conn.commit()
             conn.close()
             
