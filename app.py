@@ -900,6 +900,7 @@ def delete_old_orders(days_to_retain=90):
     """
     Delete orders and associated data older than specified days.
     Called daily to maintain 90-day rolling window of data.
+    Per-hotel isolation: Each hotel's data is deleted independently.
     """
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -916,13 +917,13 @@ def delete_old_orders(days_to_retain=90):
         c.execute('SELECT COUNT(*) FROM payments WHERE created_at < ?', (cutoff_iso,))
         payments_to_delete = c.fetchone()[0]
         
-        # Delete old orders
+        # Delete old orders (global - system maintenance)
         c.execute('DELETE FROM orders WHERE created_at < ?', (cutoff_iso,))
         
-        # Delete old payments
+        # Delete old payments (global - system maintenance)
         c.execute('DELETE FROM payments WHERE created_at < ?', (cutoff_iso,))
         
-        # Delete old subscription logs
+        # Delete old subscription logs (global - system maintenance)
         c.execute('DELETE FROM subscription_logs WHERE created_at < ?', (cutoff_iso,))
         
         # Vacuum database to reclaim space
@@ -2063,6 +2064,7 @@ def dashboard_custom_summary():
     """Get business summary for custom number of days"""
     from datetime import datetime, timedelta
     
+    hotel_id = get_current_hotel_id()
     days = request.args.get('days', type=int)
     
     if not days or days < 1 or days > 90:
@@ -2082,13 +2084,8 @@ def dashboard_custom_summary():
                     SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_orders,
                     SUM(CASE WHEN status = 'declined' THEN 1 ELSE 0 END) as declined_orders,
                     SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmed_orders
-                 FROM orders WHERE DATE(created_at) >= ?''', (start_date,))
+                 FROM orders WHERE hotel_id = ? AND DATE(created_at) >= ?''', (hotel_id, start_date,))
     result = c.fetchone()
-    
-    # Auto-delete orders older than 90 days
-    cutoff_date = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
-    c.execute('DELETE FROM orders WHERE DATE(created_at) < ?', (cutoff_date,))
-    conn.commit()
     
     conn.close()
     
@@ -2175,9 +2172,10 @@ def admin_settings():
 @app.route('/api/settings/hotel-name', methods=['GET'])
 def get_hotel_name():
     """Get hotel name for display"""
+    hotel_slug = request.args.get('hotel', 'default')
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT hotel_name FROM settings LIMIT 1')
+    c.execute('SELECT hotel_name FROM settings WHERE hotel_slug = ?', (hotel_slug,))
     result = c.fetchone()
     conn.close()
     
@@ -2187,11 +2185,12 @@ def get_hotel_name():
 @app.route('/api/settings/auto-accept', methods=['GET', 'POST'])
 def auto_accept_setting():
     """Get or set auto-accept orders setting"""
+    hotel_id = get_current_hotel_id()
     conn = get_db()
     c = conn.cursor()
     
     if request.method == 'GET':
-        c.execute('SELECT auto_accept_orders FROM settings LIMIT 1')
+        c.execute('SELECT auto_accept_orders FROM settings WHERE id = ?', (hotel_id,))
         result = c.fetchone()
         conn.close()
         auto_accept = result['auto_accept_orders'] if result else 0
@@ -2200,7 +2199,10 @@ def auto_accept_setting():
     elif request.method == 'POST':
         data = request.get_json()
         auto_accept = data.get('auto_accept', 0)
-        c.execute('UPDATE settings SET auto_accept_orders = ?, updated_at = CURRENT_TIMESTAMP', (auto_accept,))
+        hotel_id = get_current_hotel_id()
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('UPDATE settings SET auto_accept_orders = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (auto_accept, hotel_id))
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'auto_accept': auto_accept})
@@ -2209,11 +2211,12 @@ def auto_accept_setting():
 @admin_only
 def profile_setting():
     """Get or update restaurant profile"""
+    hotel_id = get_current_hotel_id()
     conn = get_db()
     c = conn.cursor()
     
     if request.method == 'GET':
-        c.execute('SELECT * FROM settings LIMIT 1')
+        c.execute('SELECT * FROM settings WHERE id = ?', (hotel_id,))
         result = c.fetchone()
         conn.close()
         
@@ -2236,6 +2239,9 @@ def profile_setting():
     
     elif request.method == 'POST':
         data = request.get_json()
+        hotel_id = get_current_hotel_id()
+        conn = get_db()
+        c = conn.cursor()
         c.execute('''UPDATE settings SET 
                      hotel_name = ?,
                      hotel_address = ?,
@@ -2246,7 +2252,8 @@ def profile_setting():
                      print_address = ?,
                      print_gstn = ?,
                      print_license = ?,
-                     updated_at = CURRENT_TIMESTAMP''',
+                     updated_at = CURRENT_TIMESTAMP
+                     WHERE id = ?''',
                  (data.get('hotel_name', 'Royal Restaurant'),
                   data.get('hotel_address', ''),
                   data.get('hotel_email', ''),
@@ -2255,7 +2262,8 @@ def profile_setting():
                   int(data.get('print_name', 1)),
                   int(data.get('print_address', 1)),
                   int(data.get('print_gstn', 1)),
-                  int(data.get('print_license', 1))))
+                  int(data.get('print_license', 1)),
+                  hotel_id))
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'message': 'Profile updated successfully'})
@@ -2321,9 +2329,10 @@ def delete_menu_item(item_id):
 @login_required
 def admin_orders():
     """View all orders"""
+    hotel_id = get_current_hotel_id()
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT * FROM orders ORDER BY created_at DESC')
+    c.execute('SELECT * FROM orders WHERE hotel_id = ? ORDER BY created_at DESC', (hotel_id,))
     orders_raw = c.fetchall()
     
     # Get sub-admins for assignment dropdown
@@ -2348,15 +2357,16 @@ def admin_orders():
 @login_required
 def view_order(order_id):
     """View order details"""
+    hotel_id = get_current_hotel_id()
     conn = get_db()
     c = conn.cursor()
     
-    # Get order
-    c.execute('SELECT * FROM orders WHERE id = ?', (order_id,))
+    # Get order - verify it belongs to current hotel
+    c.execute('SELECT * FROM orders WHERE id = ? AND hotel_id = ?', (order_id, hotel_id))
     order = c.fetchone()
     
-    # Get restaurant profile settings
-    c.execute('SELECT * FROM settings LIMIT 1')
+    # Get restaurant profile settings for THIS hotel
+    c.execute('SELECT * FROM settings WHERE id = ?', (hotel_id,))
     settings = c.fetchone()
     
     conn.close()
@@ -2498,11 +2508,12 @@ def manage_subadmins():
             sa_dict['categories_list'] = []
         subadmins.append(sa_dict)
     
-    # Get tables and categories for assignment
-    c.execute('SELECT * FROM restaurant_tables ORDER BY table_number')
+    # Get tables and categories for assignment - filter by hotel_id
+    hotel_id = get_current_hotel_id()
+    c.execute('SELECT * FROM restaurant_tables WHERE hotel_id = ? ORDER BY table_number', (hotel_id,))
     tables = [dict(t) for t in c.fetchall()]
     
-    c.execute('SELECT DISTINCT category FROM menu_items')
+    c.execute('SELECT DISTINCT category FROM menu_items WHERE hotel_id = ?', (hotel_id,))
     categories = [row['category'] for row in c.fetchall()]
     
     conn.close()
@@ -2801,21 +2812,14 @@ def api_get_menu_by_hotel():
     
     # If no hotel found by slug, try to get from table
     if not hotel_id and table_number:
-        c.execute('SELECT hotel_id FROM restaurant_tables WHERE table_number = ?', (table_number,))
+        c.execute('SELECT hotel_id FROM restaurant_tables WHERE table_number = ? LIMIT 1', (table_number,))
         result = c.fetchone()
         if result:
             hotel_id = result['hotel_id']
     
-    # If still no hotel_id, try to get the first hotel
-    if not hotel_id:
-        c.execute('SELECT id FROM settings LIMIT 1')
-        result = c.fetchone()
-        if result:
-            hotel_id = result['id']
-    
     if not hotel_id:
         conn.close()
-        return jsonify({'success': False, 'error': 'No store found', 'menu': []})
+        return jsonify({'success': False, 'error': 'No store found or invalid QR code', 'menu': []})
     
     # Get menu items for this hotel
     c.execute('SELECT * FROM menu_items WHERE hotel_id = ? ORDER BY category, name', (hotel_id,))
