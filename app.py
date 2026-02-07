@@ -2088,59 +2088,6 @@ def dashboard_custom_summary():
 def admin_tables():
     """Redirect old tables route to new table management page"""
     return redirect(url_for('table_management_page'))
-            
-            # Create a larger image with QR code and table number text
-            qr_size = qr_image.size[0]
-            # Create new image with space for text below QR code
-            final_image = Image.new('RGB', (qr_size, qr_size + 60), color='white')
-            final_image.paste(qr_image, (0, 0))
-            
-            # Add table number text below QR code
-            draw = ImageDraw.Draw(final_image)
-            try:
-                # Try to use a default font
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
-            except:
-                # Fallback to default font if truetype not available
-                font = ImageFont.load_default()
-            
-            # Draw table number text
-            text = f"TABLE {table_number}"
-            bbox = draw.textbbox((0, 0), text, font=font)
-            text_width = bbox[2] - bbox[0]
-            text_x = (qr_size - text_width) // 2
-            text_y = qr_size + 15
-            draw.text((text_x, text_y), text, fill='black', font=font)
-            
-            # Ensure static/qr_codes directory exists
-            qr_dir = os.path.join('static', 'qr_codes')
-            if not os.path.exists(qr_dir):
-                os.makedirs(qr_dir)
-            
-            # Save QR code image with table number
-            qr_filename = f"table_{table_number}_qr.png"
-            qr_path = os.path.join(qr_dir, qr_filename)
-            final_image.save(qr_path)
-            
-            # Update the table with the QR filename
-            c.execute('UPDATE restaurant_tables SET qr_code = ? WHERE id = ?',
-                     (qr_filename, table_id))
-            conn.commit()
-            conn.close()
-            
-            return redirect(url_for('admin_tables'))
-        except sqlite3.IntegrityError:
-            conn.close()
-            return redirect(url_for('admin_tables'))
-    
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('SELECT * FROM restaurant_tables WHERE hotel_id = ? ORDER BY table_number', (hotel_id,))
-    tables = c.fetchall()
-    conn.close()
-    
-    return render_template('admin/tables.html', tables=tables)
->>>>>>> 4991c2e2a17a385cfeba8f6a0cf3684046de07b6
 
 @app.route('/qr/download/<int:table_id>')
 @login_required
@@ -4151,7 +4098,6 @@ def save_table():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
->>>>>>> 4991c2e2a17a385cfeba8f6a0cf3684046de07b6
 @app.route('/order')
 def customer_order_page():
     """Customer order page - for placing new orders"""
