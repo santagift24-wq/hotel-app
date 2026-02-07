@@ -4330,8 +4330,7 @@ def get_store_info():
         
         conn = get_db()
         c = conn.cursor()
-        c.execute('''SELECT s.*, sp.phone_number, sp.store_email, 
-                            sp.street_address
+        c.execute('''SELECT s.id, s.hotel_name, sp.logo_url as logo, sp.phone_number as phone, sp.street_address as address
                     FROM settings s
                     LEFT JOIN store_profiles sp ON s.id = sp.hotel_id
                     WHERE s.hotel_slug = ?''', (hotel_slug,))
@@ -4345,9 +4344,9 @@ def get_store_info():
         return jsonify({'success': True, 'store': {
             'id': store['id'],
             'hotel_name': store['hotel_name'],
-            'address': store['street_address'],
-            'phone': store['phone_number'],
-            'logo': store['hotel_logo']
+            'address': store['address'] or 'Address not available',
+            'phone': store['phone'] or 'N/A',
+            'logo': store['logo']
         }})
     
     except Exception as e:
