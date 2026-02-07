@@ -1423,25 +1423,6 @@ def init_db():
         except:
             pass
         
-        # Create default restaurant tables (1-12) if missing
-        try:
-            # Check if any tables exist for hotel 1
-            c.execute('SELECT COUNT(*) FROM restaurant_tables WHERE hotel_id = 1')
-            table_count = c.fetchone()[0]
-            
-            # Only add if none exist
-            if table_count == 0:
-                for table_num in range(1, 13):
-                    try:
-                        c.execute('INSERT INTO restaurant_tables (hotel_id, table_number, is_active) VALUES (?, ?, ?)',
-                                 (1, table_num, 1))
-                    except:
-                        pass  # Skip if duplicate
-                conn.commit()
-        except Exception as e:
-            print(f"[WARNING] Error checking/creating default tables: {e}")
-            pass
-        
         conn.close()
         return True
         
@@ -3500,6 +3481,64 @@ def api_delete_table(table_id):
         conn.close()
         
         return jsonify({'success': True, 'message': 'Table deleted successfully'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/create-tables-bulk', methods=['POST'])
+@login_required
+def api_create_tables_bulk():
+    """Create multiple tables at once from start number to end number"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        data = request.get_json()
+        start_number = int(data.get('start_number', 1))
+        end_number = int(data.get('end_number', 12))
+        table_section = data.get('table_section', 'Main Hall')
+        capacity = int(data.get('capacity', 4))
+        
+        if start_number < 1 or end_number < 1 or start_number > end_number:
+            return jsonify({'success': False, 'error': 'Invalid table range'})
+        
+        if end_number - start_number + 1 > 100:
+            return jsonify({'success': False, 'error': 'Cannot create more than 100 tables at once'})
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        created = 0
+        failed = 0
+        existing = 0
+        
+        for table_num in range(start_number, end_number + 1):
+            try:
+                c.execute('INSERT INTO restaurant_tables (hotel_id, table_number, table_section, capacity, is_active) VALUES (?, ?, ?, ?, ?)',
+                         (hotel_id, table_num, table_section, capacity, 1))
+                created += 1
+            except sqlite3.IntegrityError:
+                existing += 1
+            except Exception as e:
+                failed += 1
+        
+        conn.commit()
+        conn.close()
+        
+        message = f'Created {created} tables'
+        if existing > 0:
+            message += f', {existing} already existed'
+        if failed > 0:
+            message += f', {failed} failed'
+        
+        return jsonify({
+            'success': True, 
+            'message': message,
+            'created': created,
+            'existing': existing,
+            'failed': failed
+        })
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
