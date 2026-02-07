@@ -1417,6 +1417,24 @@ def init_db():
         except:
             pass
         
+        try:
+            c.execute('ALTER TABLE store_profiles ADD COLUMN rating REAL DEFAULT 0')
+            conn.commit()
+        except:
+            pass
+        
+        try:
+            c.execute('ALTER TABLE store_profiles ADD COLUMN review_count INTEGER DEFAULT 0')
+            conn.commit()
+        except:
+            pass
+        
+        try:
+            c.execute('ALTER TABLE store_profiles ADD COLUMN review_summary TEXT')
+            conn.commit()
+        except:
+            pass
+        
         # Insert default data if tables are empty
         try:
             c.execute('SELECT COUNT(*) FROM settings')
@@ -3487,7 +3505,7 @@ def update_store_profile():
 @app.route('/api/upload-store-photos', methods=['POST'])
 @login_required
 def upload_store_photos():
-    """Upload photos to store gallery"""
+    """Upload photos to store gallery (max 30 images)"""
     try:
         hotel_id = get_current_hotel_id()
         if not hotel_id:
@@ -3496,16 +3514,31 @@ def upload_store_photos():
         conn = get_db()
         c = conn.cursor()
         
+        # Check current photo count
+        c.execute('SELECT COUNT(*) as count FROM store_gallery WHERE hotel_id = ?', (hotel_id,))
+        current_count = c.fetchone()['count']
+        
+        if current_count >= 30:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Maximum 30 images allowed. Please delete some images first.'}), 400
+        
         if 'photos' not in request.files:
+            conn.close()
             return jsonify({'success': False, 'error': 'No photos provided'})
         
         files = request.files.getlist('photos')
         uploaded = []
         
-        for file in files:
+        # Calculate remaining slots
+        remaining_slots = 30 - current_count
+        
+        for i, file in enumerate(files):
+            if i >= remaining_slots:
+                break
+                
             if file and file.filename != '':
                 # Save file
-                filename = f"store_{hotel_id}_{int(time.time())}_{file.filename}"
+                filename = f"store_{hotel_id}_{int(time.time())}_{i}_{file.filename}"
                 filepath = os.path.join('static/store_photos', filename)
                 os.makedirs(os.path.dirname(filepath), exist_ok=True)
                 file.save(filepath)
@@ -3519,7 +3552,7 @@ def upload_store_photos():
         
         conn.commit()
         conn.close()
-        return jsonify({'success': True, 'uploaded': len(uploaded)})
+        return jsonify({'success': True, 'uploaded': len(uploaded), 'remaining': remaining_slots - len(uploaded)})
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -3552,6 +3585,164 @@ def get_store_photos():
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/upload-logo', methods=['POST'])
+@login_required
+def upload_logo():
+    """Upload restaurant logo"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        if 'logo' not in request.files:
+            return jsonify({'success': False, 'message': 'No logo file provided'}), 400
+        
+        file = request.files['logo']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': 'No file selected'}), 400
+        
+        # Validate file type
+        allowed_extensions = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+        if not '.' in file.filename or file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+            return jsonify({'success': False, 'message': 'Invalid file type'}), 400
+        
+        # Validate file size (max 2MB)
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)
+        if file_size > 2 * 1024 * 1024:
+            return jsonify({'success': False, 'message': 'File too large (max 2MB)'}), 400
+        
+        # Create directory if needed
+        os.makedirs('static/logos', exist_ok=True)
+        
+        # Save logo
+        filename = f"logo_{hotel_id}_{int(time.time())}.{file.filename.rsplit('.', 1)[1].lower()}"
+        filepath = os.path.join('static/logos', filename)
+        file.save(filepath)
+        
+        # Update or insert logo in database
+        conn = get_db()
+        c = conn.cursor()
+        
+        c.execute('SELECT id FROM store_profiles WHERE hotel_id = ?', (hotel_id,))
+        if c.fetchone():
+            c.execute('''UPDATE store_profiles SET logo_url = ? WHERE hotel_id = ?''',
+                     (f'/{filepath}', hotel_id))
+        else:
+            c.execute('''INSERT INTO store_profiles (hotel_id, logo_url) VALUES (?, ?)''',
+                     (hotel_id, f'/{filepath}'))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'logo_url': f'/{filepath}'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/get-logo')
+@login_required
+def get_logo():
+    """Get restaurant logo"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'logo_url': None}), 401
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        c.execute('SELECT logo_url FROM store_profiles WHERE hotel_id = ?', (hotel_id,))
+        result = c.fetchone()
+        conn.close()
+        
+        if result and result['logo_url']:
+            return jsonify({'logo_url': result['logo_url']})
+        else:
+            return jsonify({'logo_url': None})
+    
+    except Exception as e:
+        return jsonify({'logo_url': None, 'error': str(e)})
+
+@app.route('/api/save-ratings', methods=['POST'])
+@login_required
+def save_ratings():
+    """Save restaurant ratings and review info"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        data = request.get_json()
+        
+        # Validate data
+        rating = data.get('rating')
+        review_count = data.get('review_count', 0)
+        review_summary = data.get('review_summary', '')
+        
+        if rating is None or rating < 0 or rating > 5:
+            return jsonify({'success': False, 'message': 'Invalid rating. Must be 0-5.'}), 400
+        
+        if review_count < 0:
+            return jsonify({'success': False, 'message': 'Review count cannot be negative'}), 400
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Update or insert ratings
+        c.execute('SELECT id FROM store_profiles WHERE hotel_id = ?', (hotel_id,))
+        if c.fetchone():
+            c.execute('''UPDATE store_profiles 
+                        SET rating = ?, review_count = ?, review_summary = ? 
+                        WHERE hotel_id = ?''',
+                     (rating, review_count, review_summary, hotel_id))
+        else:
+            c.execute('''INSERT INTO store_profiles (hotel_id, rating, review_count, review_summary) 
+                        VALUES (?, ?, ?, ?)''',
+                     (hotel_id, rating, review_count, review_summary))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Ratings saved successfully'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/get-ratings')
+@login_required
+def get_ratings():
+    """Get restaurant ratings and review info"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({}), 401
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        c.execute('''SELECT rating, review_count, review_summary 
+                    FROM store_profiles WHERE hotel_id = ?''', (hotel_id,))
+        result = c.fetchone()
+        conn.close()
+        
+        if result:
+            return jsonify({
+                'rating': result['rating'] or 0,
+                'review_count': result['review_count'] or 0,
+                'review_summary': result['review_summary'] or ''
+            })
+        else:
+            return jsonify({
+                'rating': 0,
+                'review_count': 0,
+                'review_summary': ''
+            })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/get-tables')
 @login_required
