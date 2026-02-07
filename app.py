@@ -3028,9 +3028,6 @@ def subscription():
     if hotel_id:
         subscription_status = get_subscription_status(hotel_id)
         has_active_subscription = is_subscription_active(hotel_id)
-        
-        print(f"[DEBUG] Hotel {hotel_id} subscription status: {subscription_status}")
-        print(f"[DEBUG] Active: {has_active_subscription}")
     
     return render_template('admin/subscription.html', 
                          current_status=subscription_status,
