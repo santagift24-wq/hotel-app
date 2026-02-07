@@ -3543,11 +3543,14 @@ def upload_store_photos():
                 os.makedirs(os.path.dirname(filepath), exist_ok=True)
                 file.save(filepath)
                 
+                # Convert path to web format (forward slashes)
+                web_path = '/static/store_photos/' + filename
+                
                 # Add to gallery
                 c.execute('''INSERT INTO store_gallery 
                             (hotel_id, photo_url, photo_title)
                             VALUES (?, ?, ?)''',
-                         (hotel_id, f'/{filepath}', file.filename))
+                         (hotel_id, web_path, file.filename))
                 uploaded.append(file.filename)
         
         conn.commit()
@@ -3622,6 +3625,9 @@ def upload_logo():
         filepath = os.path.join('static/logos', filename)
         file.save(filepath)
         
+        # Convert path to web format (forward slashes)
+        web_path = '/static/logos/' + filename
+        
         # Update or insert logo in database
         conn = get_db()
         c = conn.cursor()
@@ -3629,15 +3635,15 @@ def upload_logo():
         c.execute('SELECT id FROM store_profiles WHERE hotel_id = ?', (hotel_id,))
         if c.fetchone():
             c.execute('''UPDATE store_profiles SET logo_url = ? WHERE hotel_id = ?''',
-                     (f'/{filepath}', hotel_id))
+                     (web_path, hotel_id))
         else:
             c.execute('''INSERT INTO store_profiles (hotel_id, logo_url) VALUES (?, ?)''',
-                     (hotel_id, f'/{filepath}'))
+                     (hotel_id, web_path))
         
         conn.commit()
         conn.close()
         
-        return jsonify({'success': True, 'logo_url': f'/{filepath}'})
+        return jsonify({'success': True, 'logo_url': web_path})
     
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
