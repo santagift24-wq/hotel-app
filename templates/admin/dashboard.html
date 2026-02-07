@@ -522,9 +522,6 @@
                     <a href="{{ url_for('store_profile_page') }}" class="profile-menu-item" onclick="closeProfileMenu()">
                         🏪 Store Profile
                     </a>
-                    <a href="{{ url_for('table_management_page') }}" class="profile-menu-item" onclick="closeProfileMenu()">
-                        📋 Table Setup
-                    </a>
                     <a href="{{ url_for('admin_dashboard') }}" class="profile-menu-item" onclick="closeProfileMenu()">
                         📊 Dashboard
                     </a>
@@ -552,8 +549,7 @@
             <h2>Menu</h2>
             <ul>
                 <li><a href="{{ url_for('admin_dashboard') }}" class="active">Dashboard</a></li>
-                <li><a href="{{ url_for('admin_tables') }}">Tables & QR</a></li>
-                <li><a href="{{ url_for('table_management_page') }}">📋 Table Setup</a></li>
+                <li><a href="{{ url_for('admin_tables') }}">🪑 Tables & QR</a></li>
                 <li><a href="{{ url_for('admin_menu') }}">Menu</a></li>
                 <li><a href="{{ url_for('admin_orders') }}">Orders</a></li>
                 <li><a href="{{ url_for('store_profile_page') }}" style="background: linear-gradient(to right, #FF6B6B, #FF8E8E); color: white; font-weight: bold;">
