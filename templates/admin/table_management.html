@@ -591,19 +591,34 @@
         // Load tables
         async function loadTables() {
             try {
+                console.log('Loading tables from /api/get-tables...');
                 const response = await fetch('/api/get-tables');
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    console.error('API error:', response.status, response.statusText);
+                    alert('Error loading tables. Status: ' + response.status);
+                    return;
+                }
+                
                 const data = await response.json();
+                console.log('API Response:', data);
                 
                 if (data.success) {
                     tablesList = data.tables;
+                    console.log(`Loaded ${tablesList.length} tables`);
                     if (data.hotel_slug) {
                         window.hotelSlug = data.hotel_slug;
                     }
                     displayTables(tablesList);
                     updateStats();
+                } else {
+                    console.error('API error:', data.error);
+                    alert('Error: ' + (data.error || 'Unable to load tables'));
                 }
             } catch (error) {
                 console.error('Error loading tables:', error);
+                alert('Exception loading tables: ' + error.message);
             }
         }
         

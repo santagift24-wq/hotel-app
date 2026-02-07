@@ -3490,7 +3490,7 @@ def api_get_tables():
     try:
         hotel_id = get_current_hotel_id()
         if not hotel_id:
-            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+            return jsonify({'success': False, 'error': 'Not authenticated, hotel_id is None'}), 401
         
         conn = get_db()
         c = conn.cursor()
@@ -3514,9 +3514,9 @@ def api_get_tables():
                 'notes': ''
             })
         
-        return jsonify({'success': True, 'tables': tables_list})
+        return jsonify({'success': True, 'tables': tables_list, 'hotel_id': hotel_id, 'count': len(tables_list)})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}', 'type': type(e).__name__}), 500
 
 @app.route('/api/save-table', methods=['POST'])
 @login_required
