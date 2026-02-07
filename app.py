@@ -2023,9 +2023,14 @@ def admin_tables():
             # Get the inserted table ID
             table_id = c.lastrowid
             
+            # Get hotel slug for QR code
+            c.execute('SELECT hotel_slug FROM settings WHERE id = ?', (hotel_id,))
+            hotel = c.fetchone()
+            hotel_slug = hotel['hotel_slug'] if hotel else 'default'
+            
             # Generate QR code that links to the order page
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
-            qr_url = f"{request.host_url.rstrip('/')}/order?table={table_number}"
+            qr_url = f"{request.host_url.rstrip('/')}/order?table={table_number}&hotel={hotel_slug}"
             qr.add_data(qr_url)
             qr.make(fit=True)
             
@@ -3559,6 +3564,13 @@ def get_tables():
         
         conn = get_db()
         c = conn.cursor()
+        
+        # Get hotel slug
+        c.execute('SELECT hotel_slug FROM settings WHERE id = ?', (hotel_id,))
+        hotel = c.fetchone()
+        hotel_slug = hotel['hotel_slug'] if hotel else 'default'
+        
+        # Get tables
         c.execute('''SELECT * FROM table_details WHERE hotel_id = ? 
                     ORDER BY table_number''', (hotel_id,))
         
@@ -3575,7 +3587,7 @@ def get_tables():
             })
         
         conn.close()
-        return jsonify({'success': True, 'tables': tables})
+        return jsonify({'success': True, 'tables': tables, 'hotel_slug': hotel_slug})
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})

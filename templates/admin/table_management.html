@@ -531,6 +531,7 @@
     <script>
         let tablesList = [];
         let currentEditingTable = null;
+        window.hotelSlug = 'default';
         
         // Load tables
         async function loadTables() {
@@ -540,6 +541,9 @@
                 
                 if (data.success) {
                     tablesList = data.tables;
+                    if (data.hotel_slug) {
+                        window.hotelSlug = data.hotel_slug;
+                    }
                     displayTables(tablesList);
                     updateStats();
                 }
