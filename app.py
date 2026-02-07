@@ -1179,6 +1179,65 @@ DB_PATH = get_db_path()
 print(f"[DATABASE] Using database at: {DB_PATH}")
 print(f"[DATABASE] Persistent storage exists: {os.path.exists('/data') or os.path.exists('/persistent')}")
 
+def migrate_table_constraints():
+    """Fix table constraints - allow same table numbers for different hotels"""
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=30)
+        c = conn.cursor()
+        
+        # Check if restaurant_tables has the old UNIQUE constraint
+        c.execute("PRAGMA table_info(restaurant_tables)")
+        columns = c.fetchall()
+        
+        # Check if table has the problematic structure
+        c.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='restaurant_tables'")
+        create_sql = c.fetchone()
+        
+        if create_sql and 'UNIQUE' in create_sql[0]:
+            # Check if it's the global UNIQUE (old) or per-hotel UNIQUE (new)
+            sql_text = create_sql[0]
+            if 'table_number INTEGER UNIQUE' in sql_text and 'UNIQUE(hotel_id, table_number)' not in sql_text:
+                print("[MIGRATION] Fixing restaurant_tables constraint...")
+                
+                # Backup existing data
+                c.execute('SELECT * FROM restaurant_tables')
+                backup_data = c.fetchall()
+                
+                # Drop old table
+                c.execute('DROP TABLE IF EXISTS restaurant_tables')
+                
+                # Create new table with correct constraints
+                c.execute('''CREATE TABLE restaurant_tables (
+                    id INTEGER PRIMARY KEY,
+                    hotel_id INTEGER,
+                    table_number INTEGER,
+                    qr_code TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(hotel_id, table_number)
+                )''')
+                
+                # Restore data
+                if backup_data:
+                    for row in backup_data:
+                        try:
+                            # Insert preserving original data
+                            c.execute('''INSERT INTO restaurant_tables 
+                                        (id, hotel_id, table_number, qr_code, is_active, created_at)
+                                        VALUES (?, ?, ?, ?, ?, ?)''', row)
+                        except sqlite3.IntegrityError:
+                            # Skip duplicates (same table_number, different hotel)
+                            pass
+                
+                conn.commit()
+                print("[MIGRATION] ✓ Fixed table constraints - new stores can create tables 1-12")
+        
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"[MIGRATION WARNING] Could not fix constraints: {e}")
+        return False
+
 def init_db():
     """Initialize database - with full error tolerance"""
     try:
@@ -1205,10 +1264,11 @@ def init_db():
         c.execute('''CREATE TABLE IF NOT EXISTS restaurant_tables (
             id INTEGER PRIMARY KEY,
             hotel_id INTEGER,
-            table_number INTEGER UNIQUE,
+            table_number INTEGER,
             qr_code TEXT,
             is_active INTEGER DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(hotel_id, table_number)
         )''')
         
         # Menu items
@@ -1496,6 +1556,9 @@ def init_db():
 # Initialize DB on startup (non-blocking)
 try:
     print("[*] Initializing database...")
+    # First run migrations to fix any schema issues
+    migrate_table_constraints()
+    # Then initialize
     if init_db():
         print("[OK] Database initialized")
     else:
