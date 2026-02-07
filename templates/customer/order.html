@@ -395,6 +395,28 @@
         </div>
         
         <div class="layout">
+            <!-- Store Information Section -->
+            <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 20px;">
+                {% if logo_url %}
+                <img src="{{ logo_url }}" alt="Logo" style="height: 80px; width: 80px; object-fit: cover; border-radius: 8px;">
+                {% else %}
+                <div style="height: 80px; width: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 2em;">🏨</div>
+                {% endif %}
+                
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 18px; color: #333;">{{ hotel_name or 'Royal Restaurant' }}</h3>
+                    <p style="margin: 0 0 6px 0; font-size: 14px; color: #666;">
+                        📍 {{ store_profile.store_description if store_profile else 'Address not available' }}
+                    </p>
+                    <p style="margin: 0 0 6px 0; font-size: 14px; color: #666;">
+                        🍽️ Cuisine: {{ store_profile.cuisine_type if store_profile else 'N/A' }}
+                    </p>
+                    <div style="display: flex; gap: 15px; margin-top: 8px;">
+                        <span style="font-size: 14px; color: #f39c12;">⭐ 4.5 <span style="color: #999;">(24 reviews)</span></span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Search Bar -->
             <div style="margin-bottom: 30px;">
                 <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
