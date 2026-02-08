@@ -293,6 +293,18 @@
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
         
+        .btn-end-dining {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-end-dining:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+        }
+        
         /* Print Styles */
         @media print {
             body {
@@ -634,6 +646,9 @@
                 <button class="btn" style="background: #FF9800; color: white;" onclick="viewFullTableBill({{ order.table_number }}, {{ order.id }})">
                     <i class="fas fa-receipt"></i> View Full Table Bill
                 </button>
+                <button class="btn btn-end-dining" onclick="endDining({{ order.table_number }})">
+                    <i class="fas fa-door-open"></i> End Dining
+                </button>
                 
                 {% if order.status == 'pending' %}
                     <button class="btn btn-accept" onclick="updateOrder({{ order.id }}, 'accept')">Accept Order</button>
@@ -952,6 +967,32 @@
             const modal = document.getElementById('fullBillModal');
             if (event.target === modal) {
                 modal.classList.remove('show');
+            }
+        }
+        
+        // End Dining Function
+        async function endDining(tableNumber) {
+            if (!confirm('Are you sure you want to end dining for Table ' + tableNumber + '?\n\nThis will mark the table as unavailable and prevent new orders.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/end-dining', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({table_number: tableNumber})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Table ' + tableNumber + ' marked as unavailable. Customers will see "Table Busy" message.');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to end dining'));
+                }
+            } catch (error) {
+                alert('Error ending dining: ' + error.message);
             }
         }
     </script>

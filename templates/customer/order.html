@@ -385,7 +385,11 @@
     <div class="container">
         <div class="table-info">
             <h2>🪑 Table {{ table_id }}</h2>
-            <p>Welcome! Please select items from below</p>
+            {% if is_table_busy %}
+                <p style="color: #e74c3c; font-size: 20px; font-weight: bold;">This table is currently busy. Please wait for the admin to end dining before placing a new order.</p>
+            {% else %}
+                <p>Welcome! Please select items from below</p>
+            {% endif %}
         </div>
         
         <!-- Confirmation Overlay -->

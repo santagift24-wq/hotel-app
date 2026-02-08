@@ -3194,6 +3194,10 @@ def order_page(table_id):
     # Get hotel_id from table
     hotel_id = table['hotel_id'] if table else 1
     
+    # Check if table is unavailable (dining ended)
+    table_status = table.get('table_status', 'available') if table else 'available'
+    is_table_busy = table_status == 'unavailable'
+    
     # Get menu items for THIS HOTEL ONLY
     c.execute('SELECT * FROM menu_items WHERE hotel_id = ? AND is_available = 1 ORDER BY category, name', (hotel_id,))
     menu_items = c.fetchall()
@@ -3215,7 +3219,8 @@ def order_page(table_id):
                          menu_items=menu_items, 
                          hotel_name=hotel_name,
                          logo_url=logo_url,
-                         store_profile=store_profile)
+                         store_profile=store_profile,
+                         is_table_busy=is_table_busy)
 
 # ============================================================================
 # API ROUTES
@@ -4085,6 +4090,44 @@ def update_table_status():
         conn.close()
         
         return jsonify({'success': True, 'message': f'Table {table_number} marked as {status}'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/end-dining', methods=['POST'])
+@login_required
+def end_dining():
+    """End dining for a table - marks it as unavailable and completes all orders"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        data = request.get_json()
+        table_number = data.get('table_number')
+        
+        if not table_number:
+            return jsonify({'success': False, 'error': 'Table number required'}), 400
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Mark table as unavailable (dining_ended)
+        c.execute('''UPDATE restaurant_tables 
+                    SET table_status = 'unavailable' 
+                    WHERE hotel_id = ? AND table_number = ?''',
+                 (hotel_id, table_number))
+        
+        # Mark all active orders for this table as completed
+        c.execute('''UPDATE orders SET status = 'completed'
+                    WHERE hotel_id = ? AND table_number = ? 
+                    AND status IN ('pending', 'confirmed', 'accepted', 'ready')''',
+                 (hotel_id, table_number))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': f'Dining ended for Table {table_number}. Table marked as unavailable.'})
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
