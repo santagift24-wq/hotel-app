@@ -598,9 +598,23 @@
                 <div class="input-section">
                     <input type="number" id="customDays" placeholder="Enter number of days (1-90)" min="1" max="90" value="30" />
                     <button onclick="getCustomDaysSummary()">View Summary</button>
+                    <button onclick="getMostOrderedDishes()" style="background: #FF9800; color: white;">
+                        <i class="fas fa-utensils"></i> Top Dishes
+                    </button>
+                    <button onclick="downloadBusinessPDF()" style="background: #4CAF50; color: white;">
+                        <i class="fas fa-download"></i> Download PDF
+                    </button>
                 </div>
                 <div id="customSummaryResults" class="summary-stats">
                     <div class="no-data">Enter a number and click "View Summary"</div>
+                </div>
+            </div>
+            
+            <!-- Most Ordered Dishes Section -->
+            <div class="custom-days-card" style="display: none;" id="topDishesSection">
+                <h3>🍽️ Top 10 Most Ordered Dishes</h3>
+                <div id="topDishesResults" class="summary-stats">
+                    <div class="no-data">Loading...</div>
                 </div>
             </div>
             
@@ -768,6 +782,88 @@
                 .catch(err => {
                     document.getElementById('customSummaryResults').innerHTML = '<div class="no-data">Error loading summary</div>';
                 });
+        }
+        
+        function getMostOrderedDishes() {
+            const days = document.getElementById('customDays').value;
+            
+            if (!days || days < 1 || days > 90) {
+                alert('Please enter a number between 1 and 90');
+                return;
+            }
+            
+            fetch('/api/dashboard/top-dishes?days=' + days)
+                .then(r => r.json())
+                .then(data => {
+                    const topDishesSection = document.getElementById('topDishesSection');
+                    const resultDiv = document.getElementById('topDishesResults');
+                    
+                    if (data.success && data.top_dishes.length > 0) {
+                        let html = '';
+                        data.top_dishes.forEach((dish, index) => {
+                            html += `
+                                <div class="summary-item" style="border-left-color: #FF9800;">
+                                    <div class="summary-label">#${index + 1} ${dish.name}</div>
+                                    <div class="summary-value">${dish.count} orders</div>
+                                </div>
+                            `;
+                        });
+                        resultDiv.innerHTML = html;
+                        topDishesSection.style.display = 'block';
+                    } else {
+                        resultDiv.innerHTML = '<div class="no-data">No dishes found for this period</div>';
+                        topDishesSection.style.display = 'block';
+                    }
+                })
+                .catch(err => {
+                    alert('Error loading top dishes');
+                    console.error(err);
+                });
+        }
+        
+        function downloadBusinessPDF() {
+            const days = document.getElementById('customDays').value;
+            
+            if (!days || days < 1 || days > 90) {
+                alert('Please enter a number between 1 and 90');
+                return;
+            }
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ Generating...';
+            
+            fetch('/api/dashboard/download-pdf', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ days: parseInt(days) })
+            })
+            .then(r => r.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-download"></i> Download PDF';
+                
+                if (data.success) {
+                    // Create a temporary link and download
+                    const link = document.createElement('a');
+                    link.href = data.file;
+                    link.download = data.filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    alert('PDF downloaded successfully!');
+                } else {
+                    alert('Error generating PDF: ' + data.message);
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-download"></i> Download PDF';
+                alert('Error downloading PDF');
+                console.error(err);
+            });
         }
         
         // Profile dropdown menu functions

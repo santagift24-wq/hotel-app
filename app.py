@@ -2040,6 +2040,207 @@ def admin_profile():
     
     return render_template('admin/profile.html', profile=profile, admin_username=admin_username)
 
+@app.route('/api/dashboard/top-dishes', methods=['GET'])
+@login_required
+def dashboard_top_dishes():
+    """Get top ordered dishes for custom number of days"""
+    from datetime import datetime, timedelta
+    import json as json_lib
+    
+    hotel_id = get_current_hotel_id()
+    days = request.args.get('days', type=int, default=7)
+    
+    if not days or days < 1 or days > 90:
+        return jsonify({'success': False, 'message': 'Days must be between 1 and 90'})
+    
+    conn = get_db()
+    c = conn.cursor()
+    
+    # Calculate date from days ago
+    start_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+    
+    # Get all orders from the period
+    c.execute('''SELECT items FROM orders 
+                 WHERE hotel_id = ? AND DATE(created_at) >= ? AND status = 'completed'
+                 ORDER BY created_at DESC''', (hotel_id, start_date))
+    orders = c.fetchall()
+    
+    conn.close()
+    
+    # Count dish frequencies
+    dish_count = {}
+    for order in orders:
+        try:
+            items = json_lib.loads(order['items'])
+            if isinstance(items, list):
+                for item in items:
+                    name = item.get('name', 'Unknown')
+                    qty = item.get('qty', item.get('quantity', 1))
+                    dish_count[name] = dish_count.get(name, 0) + int(qty)
+        except:
+            pass
+    
+    # Sort and get top 10
+    top_dishes = sorted(dish_count.items(), key=lambda x: x[1], reverse=True)[:10]
+    
+    return jsonify({
+        'success': True,
+        'top_dishes': [{'name': name, 'count': count} for name, count in top_dishes]
+    })
+
+@app.route('/api/dashboard/download-pdf', methods=['POST'])
+@login_required
+def download_dashboard_pdf():
+    """Generate and download business report PDF"""
+    from datetime import datetime, timedelta
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    import json as json_lib
+    
+    hotel_id = get_current_hotel_id()
+    days = request.json.get('days', 30)
+    
+    if not days or days < 1 or days > 90:
+        return jsonify({'success': False, 'message': 'Invalid days'}), 400
+    
+    conn = get_db()
+    c = conn.cursor()
+    
+    # Get hotel name
+    c.execute('SELECT hotel_name FROM settings WHERE id = ?', (hotel_id,))
+    hotel = c.fetchone()
+    hotel_name = hotel['hotel_name'] if hotel else 'Restaurant'
+    
+    start_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+    
+    # Get summary stats
+    c.execute('''SELECT 
+                    COUNT(*) as total_orders,
+                    SUM(total) as total_revenue,
+                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_orders,
+                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_orders,
+                    SUM(CASE WHEN status = 'declined' THEN 1 ELSE 0 END) as declined_orders
+                 FROM orders WHERE hotel_id = ? AND DATE(created_at) >= ?''', 
+              (hotel_id, start_date))
+    summary = c.fetchone()
+    
+    # Get top dishes
+    c.execute('''SELECT items FROM orders 
+                 WHERE hotel_id = ? AND DATE(created_at) >= ? AND status = 'completed'
+                 ORDER BY created_at DESC''', (hotel_id, start_date))
+    orders = c.fetchall()
+    
+    dish_count = {}
+    for order in orders:
+        try:
+            items = json_lib.loads(order['items'])
+            if isinstance(items, list):
+                for item in items:
+                    name = item.get('name', 'Unknown')
+                    qty = item.get('qty', item.get('quantity', 1))
+                    dish_count[name] = dish_count.get(name, 0) + int(qty)
+        except:
+            pass
+    
+    top_dishes = sorted(dish_count.items(), key=lambda x: x[1], reverse=True)[:10]
+    
+    conn.close()
+    
+    # Create PDF
+    filename = f"business_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    filepath = os.path.join('static', filename)
+    
+    doc = SimpleDocTemplate(filepath, pagesize=letter)
+    styles = getSampleStyleSheet()
+    story = []
+    
+    # Title
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#667eea'),
+        spaceAfter=30,
+        alignment=1  # Center
+    )
+    story.append(Paragraph(f"{hotel_name}<br/>Business Report", title_style))
+    story.append(Spacer(1, 0.3*inch))
+    
+    # Date range
+    date_style = ParagraphStyle(
+        'DateRange',
+        parent=styles['Normal'],
+        fontSize=11,
+        textColor=colors.grey,
+        alignment=1
+    )
+    end_date = datetime.now().strftime('%Y-%m-%d')
+    story.append(Paragraph(f"Report Period: {start_date} to {end_date} ({days} days)", date_style))
+    story.append(Spacer(1, 0.3*inch))
+    
+    # Summary statistics
+    summary_data = [
+        ['Metric', 'Value'],
+        ['Total Orders', str(summary['total_orders'] or 0)],
+        ['Completed Orders', str(summary['completed_orders'] or 0)],
+        ['Pending Orders', str(summary['pending_orders'] or 0)],
+        ['Declined Orders', str(summary['declined_orders'] or 0)],
+        ['Total Revenue', f"₹{(summary['total_revenue'] or 0):.2f}"],
+        ['Average Order Value', f"₹{((summary['total_revenue'] or 0) / max(1, summary['total_orders'] or 1)):.2f}"],
+    ]
+    
+    summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 14),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    story.append(Paragraph("<b>Business Summary</b>", styles['Heading2']))
+    story.append(summary_table)
+    story.append(Spacer(1, 0.5*inch))
+    
+    # Top dishes
+    if top_dishes:
+        story.append(PageBreak())
+        story.append(Paragraph("<b>Top 10 Most Ordered Dishes</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        dishes_data = [['#', 'Dish Name', 'Orders']]
+        for idx, (dish, count) in enumerate(top_dishes, 1):
+            dishes_data.append([str(idx), dish, str(count)])
+        
+        dishes_table = Table(dishes_data, colWidths=[0.5*inch, 4*inch, 1.5*inch])
+        dishes_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#764ba2')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.lightgrey),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        story.append(dishes_table)
+    
+    # Generate PDF
+    doc.build(story)
+    
+    return jsonify({
+        'success': True,
+        'file': f'/static/{filename}',
+        'filename': filename
+    })
+
 @app.route('/api/dashboard/custom-summary', methods=['GET'])
 @login_required
 def dashboard_custom_summary():
