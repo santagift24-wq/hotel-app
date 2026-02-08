@@ -2427,6 +2427,175 @@ def mark_order_ready(order_id):
     
     return jsonify({'success': True, 'message': 'Order marked as ready'})
 
+# ============================================================================
+# API ENDPOINTS FOR ORDER MANAGEMENT (Frontend Compatibility)
+# ============================================================================
+
+@app.route('/api/admin/approve-order', methods=['POST'])
+@login_required
+def api_approve_order():
+    """API endpoint to approve/accept an order"""
+    try:
+        data = request.get_json()
+        order_id = data.get('order_id')
+        
+        if not order_id:
+            return jsonify({'success': False, 'error': 'Order ID is required'}), 400
+        
+        # Get current hotel for authorization
+        hotel_id = get_current_hotel_id()
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Verify order belongs to current hotel
+        c.execute('SELECT hotel_id FROM orders WHERE id = ?', (order_id,))
+        order = c.fetchone()
+        
+        if not order:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Order not found'}), 404
+        
+        if order['hotel_id'] != hotel_id:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+        # Update order status to confirmed
+        c.execute('UPDATE orders SET status = ? WHERE id = ?', ('confirmed', order_id))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Order approved successfully'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/decline-order', methods=['POST'])
+@login_required
+def api_decline_order():
+    """API endpoint to decline an order"""
+    try:
+        data = request.get_json()
+        order_id = data.get('order_id')
+        
+        if not order_id:
+            return jsonify({'success': False, 'error': 'Order ID is required'}), 400
+        
+        # Get current hotel for authorization
+        hotel_id = get_current_hotel_id()
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Verify order belongs to current hotel
+        c.execute('SELECT hotel_id FROM orders WHERE id = ?', (order_id,))
+        order = c.fetchone()
+        
+        if not order:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Order not found'}), 404
+        
+        if order['hotel_id'] != hotel_id:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+        # Update order status to declined
+        c.execute('UPDATE orders SET status = ? WHERE id = ?', ('declined', order_id))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Order declined successfully'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/update-status', methods=['POST'])
+@login_required
+def api_update_order_status():
+    """API endpoint to update order status"""
+    try:
+        data = request.get_json()
+        order_id = data.get('order_id')
+        status = data.get('status')
+        
+        if not order_id or not status:
+            return jsonify({'success': False, 'error': 'Order ID and status are required'}), 400
+        
+        # Get current hotel for authorization
+        hotel_id = get_current_hotel_id()
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Verify order belongs to current hotel
+        c.execute('SELECT hotel_id FROM orders WHERE id = ?', (order_id,))
+        order = c.fetchone()
+        
+        if not order:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Order not found'}), 404
+        
+        if order['hotel_id'] != hotel_id:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+        # Valid statuses
+        valid_statuses = ['pending', 'confirmed', 'ready', 'completed', 'declined']
+        if status not in valid_statuses:
+            conn.close()
+            return jsonify({'success': False, 'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'}), 400
+        
+        # Update order status
+        c.execute('UPDATE orders SET status = ? WHERE id = ?', (status, order_id))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': f'Order status updated to {status}'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/generate-bill', methods=['POST'])
+@login_required
+def api_generate_bill():
+    """API endpoint to generate bill"""
+    try:
+        data = request.get_json()
+        order_id = data.get('order_id')
+        
+        if not order_id:
+            return jsonify({'success': False, 'error': 'Order ID is required'}), 400
+        
+        # Get current hotel for authorization
+        hotel_id = get_current_hotel_id()
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Verify order belongs to current hotel
+        c.execute('SELECT hotel_id FROM orders WHERE id = ?', (order_id,))
+        order = c.fetchone()
+        
+        if not order:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Order not found'}), 404
+        
+        if order['hotel_id'] != hotel_id:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+        # Generate a unique bill number
+        bill_number = f"BILL-{order_id}-{int(time.time())}"
+        
+        # Update order with bill number (if you have a bill_number field)
+        # For now, just return success
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Bill generated', 'bill_number': bill_number})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/admin/logout')
 def admin_logout():
     """Logout"""
