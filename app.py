@@ -2376,21 +2376,6 @@ def get_hotel_name():
     hotel_name = result['hotel_name'] if result else 'Royal Restaurant'
     return jsonify({'success': True, 'hotel_name': hotel_name})
 
-                     WHERE id = ?''',
-                 (data.get('hotel_name', 'Royal Restaurant'),
-                  data.get('hotel_address', ''),
-                  data.get('hotel_email', ''),
-                  data.get('hotel_gstn', ''),
-                  data.get('hotel_food_license', ''),
-                  int(data.get('print_name', 1)),
-                  int(data.get('print_address', 1)),
-                  int(data.get('print_gstn', 1)),
-                  int(data.get('print_license', 1)),
-                  hotel_id))
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True, 'message': 'Profile updated successfully'})
-
 @app.route('/admin/menu', methods=['GET', 'POST'])
 @login_required
 def admin_menu():
@@ -3438,29 +3423,6 @@ def contact():
     
     return render_template('contact.html')
 
-            }), 400
-        
-        print(f"[OK] Creating Razorpay order for hotel {hotel_id} - {plan} plan")
-        order_response, error = create_razorpay_order(hotel_id, session.get('hotel_name', 'Hotel'), plan)
-        
-        if order_response and order_response.get('id'):
-            print(f"[OK] Order created: {order_response.get('id')}")
-            return jsonify({
-                'success': True,
-                'order_id': order_response.get('id'),
-                'amount': order_response.get('amount'),
-                'currency': order_response.get('currency'),
-                'key_id': RAZORPAY_KEY_ID
-            }), 200
-        else:
-            print(f"[ERROR] Failed to create order: {error}")
-            return jsonify({'success': False, 'message': f'Failed to create order: {error}'}), 500
-    
-    except Exception as e:
-        print(f"[ERROR] Error creating order: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': f'Error creating order: {str(e)}'}), 500
 
 @app.route('/api/verify-payment', methods=['POST'])
 def api_verify_payment():
