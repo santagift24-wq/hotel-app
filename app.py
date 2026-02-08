@@ -3322,7 +3322,7 @@ def place_order():
     auto_accept = int(settings['auto_accept_orders']) if settings and settings['auto_accept_orders'] else 0
     
     # Set order status based on auto-accept setting
-    order_status = 'confirmed' if (auto_accept == 1) else 'pending'
+    order_status = 'accepted' if (auto_accept == 1) else 'pending'
     
     # Insert order with hotel_id
     c.execute('INSERT INTO orders (hotel_id, table_id, table_number, items, subtotal, tax, service_charge, total, status, assigned_to) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
