@@ -620,11 +620,17 @@
             
             <div class="orders-section">
                 <h2>Recent Orders</h2>
+                {% set page = request.args.get('page', 1, type=int) %}
+                {% set per_page = 10 %}
+                {% set start_index = (page - 1) * per_page %}
+                {% set end_index = start_index + per_page %}
+
                 {% if orders %}
                 <div class="orders-table">
                     <table>
                         <thead>
                             <tr>
+                                <th>#</th>
                                 <th>Order ID</th>
                                 <th>Table</th>
                                 <th>Items</th>
@@ -634,17 +640,18 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for order in orders %}
+                            {% for order in orders[start_index:end_index] %}
                             <tr>
+                                <td>{{ loop.index0 + start_index + 1 }}</td>
                                 <td><strong>#{{ order.id }}</strong></td>
                                 <td>Table {{ order.table_number }}</td>
                                 <td>
                                     {% if order.parsed_items %}
-                                        {% for item in order.parsed_items %}
-                                            <div>{{ item.name }} x{{ item.quantity }}</div>
-                                        {% endfor %}
+                                    {% for item in order.parsed_items %}
+                                    <div>{{ item.name }} x{{ item.quantity }}</div>
+                                    {% endfor %}
                                     {% else %}
-                                        <div>-</div>
+                                    <div>-</div>
                                     {% endif %}
                                 </td>
                                 <td>Rs {{ "%.2f"|format(order.total) }}</td>
@@ -655,25 +662,33 @@
                                 </td>
                                 <td>
                                     {% if order.status == 'pending' %}
-                                        <div class="action-buttons">
-                                            <button class="btn-accept" onclick="acceptOrder({{ order.id }})">✓ Accept</button>
-                                            <button class="btn-decline" onclick="declineOrder({{ order.id }})">✗ Decline</button>
-                                            <a class="btn-details" href="/admin/order/{{ order.id }}" style="background: #2196F3; color: white; padding: 6px 12px; border-radius: 5px; text-decoration: none; font-weight: 600;">View Details</a>
-                                        </div>
-                                    {% elif order.status == 'confirmed' %}
-                                        <div class="action-buttons">
-                                            <button class="btn-complete" onclick="completeOrder({{ order.id }})">✓ Complete</button>
-                                            <a class="btn-details" href="/admin/order/{{ order.id }}" style="background: #2196F3; color: white; padding: 6px 12px; border-radius: 5px; text-decoration: none; font-weight: 600;">View Details</a>
-                                        </div>
-                                    {% else %}
+                                    <div class="action-buttons">
+                                        <button class="btn-accept" onclick="acceptOrder({{ order.id }})">✓ Accept</button>
+                                        <button class="btn-decline" onclick="declineOrder({{ order.id }})">✗ Decline</button>
                                         <a class="btn-details" href="/admin/order/{{ order.id }}" style="background: #2196F3; color: white; padding: 6px 12px; border-radius: 5px; text-decoration: none; font-weight: 600;">View Details</a>
-                                        <span class="status-badge status-{{ order.status }}">{{ order.status|upper }}</span>
+                                    </div>
+                                    {% elif order.status == 'confirmed' %}
+                                    <div class="action-buttons">
+                                        <button class="btn-complete" onclick="completeOrder({{ order.id }})">✓ Complete</button>
+                                        <a class="btn-details" href="/admin/order/{{ order.id }}" style="background: #2196F3; color: white; padding: 6px 12px; border-radius: 5px; text-decoration: none; font-weight: 600;">View Details</a>
+                                    </div>
+                                    {% else %}
+                                    <a class="btn-details" href="/admin/order/{{ order.id }}" style="background: #2196F3; color: white; padding: 6px 12px; border-radius: 5px; text-decoration: none; font-weight: 600;">View Details</a>
+                                    <span class="status-badge status-{{ order.status }}">{{ order.status|upper }}</span>
                                     {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
+                </div>
+                <div style="margin-top: 20px; text-align: right;">
+                    {% if end_index < orders|length %}
+                    <a href="?page={{ page + 1 }}" style="background: #667eea; color: white; padding: 8px 18px; border-radius: 5px; text-decoration: none; font-weight: 600;">Next &raquo;</a>
+                    {% endif %}
+                    {% if page > 1 %}
+                    <a href="?page={{ page - 1 }}" style="background: #667eea; color: white; padding: 8px 18px; border-radius: 5px; text-decoration: none; font-weight: 600; margin-right: 10px;">&laquo; Previous</a>
+                    {% endif %}
                 </div>
                 {% else %}
                 <div class="empty-state">
