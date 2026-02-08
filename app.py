@@ -4397,7 +4397,7 @@ def no_service():
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/track-order', methods=['GET'])
-def track_order():
+def api_track_order():
     """Get orders for a table - prevents cross-contamination between customers"""
     try:
         table_number = request.args.get('table')
