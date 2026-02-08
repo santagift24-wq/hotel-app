@@ -663,6 +663,11 @@
                             <button class="btn-qr" onclick="showQRCode(${table.table_number})">
                                 <i class="fas fa-qrcode"></i> QR Code
                             </button>
+                            ${table.table_status === 'occupied' ? `
+                            <button class="btn-warning" onclick="markTableNoNeed(${table.table_number})" style="background: #FF9800; color: white;">
+                                <i class="fas fa-ban"></i> No Need
+                            </button>
+                            ` : ''}
                             <button class="btn-danger" onclick="deleteTable(${table.id})">
                                 <i class="fas fa-trash"></i> Delete
                             </button>
@@ -894,6 +899,35 @@
         
         function closeModal(modalId) {
             document.getElementById(modalId).classList.remove('show');
+        }
+        
+        async function markTableNoNeed(tableNumber) {
+            if (!confirm('Mark this table as "No Need"? The table will be cleared and marked as available.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/update-table-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        table_number: tableNumber,
+                        status: 'available'
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('Table marked as "No Need" and is now available');
+                    loadTables();
+                } else {
+                    alert('Error updating table: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error updating table: ' + error);
+            }
         }
         
         // Load tables on page load

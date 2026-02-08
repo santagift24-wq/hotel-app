@@ -464,9 +464,6 @@
             <button class="btn btn-secondary" onclick="requestReorder()" id="reorderBtn" style="display: none;">
                 <i class="fas fa-redo"></i> Reorder
             </button>
-            <button class="btn btn-danger" onclick="endService()" id="noServiceBtn" style="display: none;">
-                <i class="fas fa-door-open"></i> No Service
-            </button>
         </div>
     </div>
 
@@ -495,14 +492,24 @@
             setTimeout(() => messageEl.classList.remove('show'), 5000);
         }
 
+        let isFirstLoad = true;
+        
         async function loadOrders() {
             try {
-                loading.style.display = 'flex';
+                // Only show loading on first load
+                if (isFirstLoad) {
+                    loading.style.display = 'flex';
+                }
+                
                 const response = await fetch(
                     `/api/track-order?table=${tableNumber}&hotel=${hotelSlug}&session_id=${sessionId}`
                 );
                 const data = await response.json();
-                loading.style.display = 'none';
+                
+                if (isFirstLoad) {
+                    loading.style.display = 'none';
+                    isFirstLoad = false;
+                }
 
                 if (data.success && data.orders.length > 0) {
                     // Has active orders - show orders and buttons
@@ -512,18 +519,16 @@
                     // Hide Place Order button when there are active orders
                     document.getElementById('placeOrderBtn').style.display = 'none';
                     
-                    // Show buttons based on latest order status
+                    // Show Reorder button if last order is completed
                     const latestOrder = data.orders[0];
                     document.getElementById('reorderBtn').style.display = 
                         latestOrder.status === 'completed' ? 'flex' : 'none';
-                    document.getElementById('noServiceBtn').style.display = 'flex';
                 } else {
                     // No active orders - show Place Order button and try to show bill
                     noOrders.style.display = 'block';
                     orderContainer.innerHTML = '';
                     document.getElementById('placeOrderBtn').style.display = 'flex';
                     document.getElementById('reorderBtn').style.display = 'none';
-                    document.getElementById('noServiceBtn').style.display = 'none';
                     
                     // Try to get and show bill even if no active orders
                     try {
@@ -658,14 +663,22 @@
                         }
 
                         group.items.forEach(item => {
-                            const itemTotal = item.price * item.qty;
+                            // Handle both object and string item formats
+                            let itemName = typeof item === 'string' ? item : (item.name || 'Item');
+                            let itemQty = item.qty || 1;
+                            let itemPrice = item.price || 0;
+                            
+                            const itemTotal = itemPrice * itemQty;
                             groupTotal += itemTotal;
-                            billHtml += `
-                                <div class="bill-item">
-                                    <span>${item.name} x${item.qty}</span>
-                                    <span>₹${itemTotal.toFixed(2)}</span>
-                                </div>
-                            `;
+                            
+                            if (itemPrice > 0 || itemQty > 0) {
+                                billHtml += `
+                                    <div class="bill-item">
+                                        <span>${itemName} ${itemQty > 1 ? 'x' + itemQty : ''}</span>
+                                        <span>${itemPrice > 0 ? '₹' + itemTotal.toFixed(2) : ''}</span>
+                                    </div>
+                                `;
+                            }
                         });
                     });
 
@@ -679,13 +692,22 @@
                                 <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Thank you for your order!</p>
                                 <p style="font-size: 11px; color: #999;">Please review your bill above before leaving.</p>
                             </div>
+                            <div style="margin-top: 20px;">
+                                <button class="btn btn-danger" onclick="endService()" style="width: 100%;">
+                                    <i class="fas fa-door-open"></i> No Service - End Dining
+                                </button>
+                            </div>
                         </div>
                     `;
 
-                    orderContainer.innerHTML += billHtml;
+                    // Check if bill already exists
+                    const existingBill = orderContainer.querySelector('.bill-section');
+                    if (!existingBill) {
+                        orderContainer.innerHTML += billHtml;
+                    }
                 }
             } catch (error) {
-                console.error('Error generating bill:', error);
+                console.log('Bill not available yet:', error);
             }
         }
 

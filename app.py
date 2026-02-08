@@ -3760,6 +3760,53 @@ def api_delete_table(table_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/update-table-status', methods=['POST'])
+@login_required
+def update_table_status():
+    """Update table status - used for marking table as available after No Need"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        data = request.get_json()
+        table_number = data.get('table_number')
+        status = data.get('status', 'available')
+        
+        if not table_number:
+            return jsonify({'success': False, 'error': 'Table number required'}), 400
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get hotel ID first
+        c.execute('SELECT id FROM settings WHERE id = ?', (hotel_id,))
+        hotel = c.fetchone()
+        
+        if not hotel:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Hotel not found'}), 404
+        
+        # Update table status in restaurant_tables
+        c.execute('''UPDATE restaurant_tables 
+                    SET table_status = ? 
+                    WHERE hotel_id = ? AND table_number = ?''',
+                 (status, hotel_id, table_number))
+        
+        # Mark all orders for this table as completed
+        c.execute('''UPDATE orders SET status = 'completed'
+                    WHERE hotel_id = ? AND table_number = ? 
+                    AND status IN ('pending', 'confirmed', 'accepted', 'ready')''',
+                 (hotel_id, table_number))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': f'Table {table_number} marked as {status}'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/create-tables-bulk', methods=['POST'])
 @login_required
 def api_create_tables_bulk():
