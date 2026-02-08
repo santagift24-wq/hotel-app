@@ -2,7 +2,7 @@
 Real-Time Restaurant Ordering System - Flask Backend
 Complete with SQLite database, QR codes, real order management
 Multi-tenant with 24-hour automated reports and data security
-Version: 2.1.0 - Railway deployment ready
+Version: 2.1.1 - Force rebuild for Railway deployment
 """
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file
