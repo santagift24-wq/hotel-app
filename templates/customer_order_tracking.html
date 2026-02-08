@@ -447,15 +447,6 @@
             <p style="margin-top: 15px; color: #666;">Loading your orders...</p>
         </div>
 
-        <!-- Orders Container -->
-        <div id="orderContainer"></div>
-
-        <!-- No Orders -->
-        <div id="noOrders" style="text-align: center; padding: 40px 20px; display: none;">
-            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 15px;"></i>
-            <p style="color: #999;">No active orders. Place your first order!</p>
-        </div>
-
         <!-- Buttons -->
         <div class="button-group">
             <button class="btn btn-primary" id="placeOrderBtn" onclick="placeNewOrder()">
@@ -464,6 +455,15 @@
             <button class="btn btn-secondary" onclick="requestReorder()" id="reorderBtn" style="display: none;">
                 <i class="fas fa-redo"></i> Reorder
             </button>
+        </div>
+
+        <!-- Orders Container -->
+        <div id="orderContainer"></div>
+
+        <!-- No Orders -->
+        <div id="noOrders" style="text-align: center; padding: 40px 20px; display: none;">
+            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 15px;"></i>
+            <p style="color: #999;">No active orders. Place your first order!</p>
         </div>
     </div>
 
@@ -525,7 +525,6 @@
                         latestOrder.status === 'completed' ? 'flex' : 'none';
                 } else {
                     // No active orders - show Place Order button and try to show bill
-                    noOrders.style.display = 'block';
                     orderContainer.innerHTML = '';
                     document.getElementById('placeOrderBtn').style.display = 'flex';
                     document.getElementById('reorderBtn').style.display = 'none';
@@ -538,9 +537,16 @@
                         const billData = await billResponse.json();
                         if (billData.success) {
                             generateBill(billData);
+                            // If bill generated, hide "No active orders" message
+                            noOrders.style.display = 'none';
+                        } else {
+                            // No bill found, show no orders message
+                            noOrders.style.display = 'block';
                         }
                     } catch (error) {
                         console.log('No bill available yet');
+                        // Show no orders message if no bill available
+                        noOrders.style.display = 'block';
                     }
                 }
             } catch (error) {
@@ -753,9 +759,9 @@
             window.location.href = `/order?table=${tableNumber}&hotel=${hotelSlug}&reorder=true`;
         }
 
-        // Auto-refresh every 3 seconds
+        // Auto-refresh every 5 seconds
         loadOrders();
-        setInterval(loadOrders, 3000);
+        setInterval(loadOrders, 5000);
     </script>
 </body>
 </html>
