@@ -2580,6 +2580,87 @@ def view_order(order_id):
     
     return render_template('admin/order_details.html', order=order_dict, profile=profile)
 
+@app.route('/api/table-session-bill', methods=['GET'])
+@login_required
+def get_table_session_bill():
+    """Get combined bill for all orders from a specific table/order_group"""
+    try:
+        table_number = request.args.get('table_number')
+        order_id = request.args.get('order_id')
+        
+        if not table_number or not order_id:
+            return jsonify({'success': False, 'error': 'Missing parameters'}), 400
+        
+        hotel_id = get_current_hotel_id()
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get the order to find its order_group
+        c.execute('SELECT order_group FROM orders WHERE id = ? AND hotel_id = ?', (order_id, hotel_id))
+        original_order = c.fetchone()
+        
+        if not original_order:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Order not found'}), 404
+        
+        order_group = original_order['order_group']
+        
+        # Get all orders in this group (all orders for this table session)
+        c.execute('''SELECT * FROM orders 
+                   WHERE hotel_id = ? AND table_number = ? AND order_group = ?
+                   ORDER BY reorder_number, created_at''',
+                 (hotel_id, table_number, order_group))
+        
+        orders = c.fetchall()
+        
+        # Get hotel info
+        c.execute('SELECT hotel_name, hotel_address FROM settings WHERE id = ?', (hotel_id,))
+        hotel = c.fetchone()
+        
+        conn.close()
+        
+        if not orders:
+            return jsonify({'success': False, 'error': 'No orders found'}), 404
+        
+        # Combine all items from all orders
+        all_items = []
+        total_subtotal = 0
+        total_tax = 0
+        total_service_charge = 0
+        total_amount = 0
+        
+        for order in orders:
+            try:
+                items = json.loads(order['items'])
+                all_items.append({
+                    'order_number': order['reorder_number'] if order['reorder_number'] > 0 else 'Original',
+                    'items': items
+                })
+            except:
+                pass
+            
+            total_subtotal += order['subtotal'] or 0
+            total_tax += order['tax'] or 0
+            total_service_charge += order['service_charge'] or 0
+            total_amount += order['total'] or 0
+        
+        return jsonify({
+            'success': True,
+            'hotel_name': hotel['hotel_name'] if hotel else 'Restaurant',
+            'table_number': table_number,
+            'order_group': order_group,
+            'all_orders': all_items,
+            'total_subtotal': total_subtotal,
+            'total_tax': total_tax,
+            'total_service_charge': total_service_charge,
+            'total_amount': total_amount,
+            'order_count': len(orders),
+            'print_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/admin/order/<int:order_id>/accept', methods=['POST'])
 @login_required
 def accept_order(order_id):
