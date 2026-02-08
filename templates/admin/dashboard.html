@@ -618,52 +618,6 @@
                 </div>
             </div>
             
-            <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 30px;">
-                <span style="font-weight: bold; font-size: 16px;">Order Accept Mode:</span>
-                <button id="autoAcceptBtn" onclick="setAcceptMode('auto')" style="padding: 8px 18px; border-radius: 5px; border: none; font-weight: bold; background: #28a745; color: white;">✓ AUTO ACCEPT</button>
-                <button id="manualAcceptBtn" onclick="setAcceptMode('manual')" style="padding: 8px 18px; border-radius: 5px; border: none; font-weight: bold; background: #f44336; color: white;">✗ MANUAL ACCEPT</button>
-                <span id="acceptModeStatus" style="margin-left: 15px; font-size: 15px; color: #666;"></span>
-            </div>
-            <script>
-            async function setAcceptMode(mode) {
-                const auto_accept = mode === 'auto' ? 1 : 0;
-                const res = await fetch('/admin/auto-accept-setting', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({auto_accept})
-                });
-                const data = await res.json();
-                if (data.success) {
-                    updateAcceptModeUI(auto_accept);
-                } else {
-                    alert('Failed to update accept mode');
-                }
-            }
-            function updateAcceptModeUI(auto_accept) {
-                const autoBtn = document.getElementById('autoAcceptBtn');
-                const manualBtn = document.getElementById('manualAcceptBtn');
-                if (auto_accept) {
-                    autoBtn.style.background = '#28a745';
-                    autoBtn.style.color = 'white';
-                    manualBtn.style.background = '#e0e0e0';
-                    manualBtn.style.color = '#333';
-                    document.getElementById('acceptModeStatus').innerText = 'Auto Accept is ON';
-                } else {
-                    manualBtn.style.background = '#f44336';
-                    manualBtn.style.color = 'white';
-                    autoBtn.style.background = '#e0e0e0';
-                    autoBtn.style.color = '#333';
-                    document.getElementById('acceptModeStatus').innerText = 'Manual Accept is ON';
-                }
-            }
-            async function fetchAcceptMode() {
-                const res = await fetch('/admin/auto-accept-setting');
-                const data = await res.json();
-                updateAcceptModeUI(data.auto_accept);
-            }
-            window.addEventListener('DOMContentLoaded', fetchAcceptMode);
-            </script>
-            
             <div class="orders-section">
                 <h2>Recent Orders</h2>
                 {% if orders %}
