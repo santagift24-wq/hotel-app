@@ -1986,23 +1986,35 @@ def admin_dashboard():
     revenue = c.fetchone()['revenue'] or 0
     
     # Get this hotel's settings
-    c.execute('SELECT hotel_name FROM settings WHERE id = ?', (hotel_id,))
+    c.execute('SELECT hotel_name, currency FROM settings WHERE id = ?', (hotel_id,))
     settings = c.fetchone()
     hotel_name = settings['hotel_name'] if settings else 'My Hotel'
-    
+    currency = settings['currency'] if settings and settings['currency'] else 'INR'
+
+    # Currency symbol map
+    currency_symbols = {
+        'INR': '₹', 'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'CNY': '¥',
+        'AUD': 'A$', 'CAD': 'C$', 'SGD': 'S$', 'ZAR': 'R', 'BRL': 'R$', 'MXN': 'Mex$',
+        'AED': 'د.إ', 'SAR': 'ر.س', 'RUB': '₽', 'KRW': '₩', 'THB': '฿', 'IDR': 'Rp',
+        'TRY': '₺', 'NGN': '₦'
+    }
+    currency_symbol = currency_symbols.get(currency, currency)
+
     stats = {
         'total': total,
         'pending': pending,
         'confirmed': confirmed,
         'revenue': revenue
     }
-    
+
     conn.close()
-    
+
     return render_template('admin/dashboard.html', 
                          orders=orders,
                          stats=stats,
-                         hotel_name=hotel_name)
+                         hotel_name=hotel_name,
+                         currency=currency,
+                         currency_symbol=currency_symbol)
 
 @app.route('/admin/profile', methods=['GET'])
 @admin_only
@@ -2333,14 +2345,13 @@ def admin_settings():
     
     if request.method == 'POST':
         hotel_name = request.form.get('hotel_name', 'Royal Restaurant')
-        
+        currency = request.form.get('currency', 'INR')
         conn = get_db()
         c = conn.cursor()
         # Update ONLY current hotel's settings
-        c.execute('UPDATE settings SET hotel_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (hotel_name, current_hotel_id))
+        c.execute('UPDATE settings SET hotel_name = ?, currency = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (hotel_name, currency, current_hotel_id))
         conn.commit()
         conn.close()
-        
         return redirect(url_for('admin_settings'))
     
     conn = get_db()
