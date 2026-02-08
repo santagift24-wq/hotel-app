@@ -512,13 +512,26 @@
                     const latestOrder = data.orders[0];
                     document.getElementById('reorderBtn').style.display = 
                         latestOrder.status === 'completed' ? 'flex' : 'none';
-                    document.getElementById('noServiceBtn').style.display = 
-                        latestOrder.status === 'completed' ? 'flex' : 'none';
+                    document.getElementById('noServiceBtn').style.display = 'flex';
                 } else {
+                    // No active orders - show empty state with bill and No Service button
                     noOrders.style.display = 'block';
                     orderContainer.innerHTML = '';
                     document.getElementById('reorderBtn').style.display = 'none';
-                    document.getElementById('noServiceBtn').style.display = 'none';
+                    document.getElementById('noServiceBtn').style.display = 'flex';
+                    
+                    // Still try to get and show bill even if no active orders
+                    try {
+                        const billResponse = await fetch(
+                            `/api/get-bill?table=${tableNumber}&hotel=${hotelSlug}`
+                        );
+                        const billData = await billResponse.json();
+                        if (billData.success) {
+                            generateBill(billData);
+                        }
+                    } catch (error) {
+                        console.log('No bill available yet');
+                    }
                 }
             } catch (error) {
                 console.error('Error loading orders:', error);
@@ -588,19 +601,35 @@
                 orderContainer.innerHTML += html;
             });
 
-            // Add bill if order is completed
-            const completedOrder = orders.find(o => o.status === 'completed');
-            if (completedOrder) {
-                generateBill(completedOrder);
-            }
+            // Load and display bill asynchronously after rendering orders
+            loadBill();
         }
 
-        async function generateBill(order) {
+        async function loadBill() {
             try {
                 const response = await fetch(
                     `/api/get-bill?table=${tableNumber}&hotel=${hotelSlug}`
                 );
-                const data = await response.json();
+                const billData = await response.json();
+                if (billData.success) {
+                    generateBill(billData);
+                }
+            } catch (error) {
+                console.log('Bill not available yet');
+            }
+        }
+        }
+
+        async function generateBill(billData) {
+            try {
+                // If billData is an order object, fetch the bill data
+                let data = billData;
+                if (!billData.success) {
+                    const response = await fetch(
+                        `/api/get-bill?table=${tableNumber}&hotel=${hotelSlug}`
+                    );
+                    data = await response.json();
+                }
 
                 if (data.success) {
                     let billHtml = `
