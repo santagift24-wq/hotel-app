@@ -4491,6 +4491,130 @@ def print_bill():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/no-service', methods=['POST'])
+def no_service():
+    """End service for a table - called by customer or admin"""
+    try:
+        data = request.get_json()
+        table_number = data.get('table_number')
+        hotel_slug = data.get('hotel_slug')
+        
+        if not table_number or not hotel_slug:
+            return jsonify({'success': False, 'error': 'Missing parameters'}), 400
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get hotel ID
+        c.execute('SELECT id FROM settings WHERE hotel_slug = ?', (hotel_slug,))
+        hotel = c.fetchone()
+        
+        if not hotel:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Hotel not found'}), 404
+        
+        # Get all pending/active orders for this table
+        c.execute('''SELECT * FROM orders 
+                    WHERE hotel_id = ? AND table_number = ? 
+                    AND status IN ('pending', 'confirmed', 'accepted', 'ready')
+                    ORDER BY created_at DESC''',
+                 (hotel['id'], table_number))
+        
+        active_orders = c.fetchall()
+        
+        # Mark all active orders as completed
+        c.execute('''UPDATE orders SET status = 'completed'
+                    WHERE hotel_id = ? AND table_number = ? 
+                    AND status IN ('pending', 'confirmed', 'accepted', 'ready')''',
+                 (hotel['id'], table_number))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Service ended. Table cleared for next customer.',
+            'orders_completed': len(active_orders)
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/track-order', methods=['GET'])
+def track_order():
+    """Get orders for a table - prevents cross-contamination between customers"""
+    try:
+        table_number = request.args.get('table')
+        hotel_slug = request.args.get('hotel', 'default')
+        
+        if not table_number or not hotel_slug:
+            return jsonify({'success': False, 'error': 'Missing parameters'}), 400
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get hotel info
+        c.execute('SELECT id FROM settings WHERE hotel_slug = ?', (hotel_slug,))
+        hotel = c.fetchone()
+        
+        if not hotel:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Hotel not found'}), 404
+        
+        # Get only ACTIVE orders (not completed from previous sessions)
+        # This prevents previous customer's orders from showing
+        c.execute('''SELECT * FROM orders 
+                    WHERE hotel_id = ? AND table_number = ?
+                    AND status != 'completed'
+                    ORDER BY created_at DESC''',
+                 (hotel['id'], int(table_number)))
+        
+        orders = c.fetchall()
+        conn.close()
+        
+        if not orders:
+            return jsonify({'success': True, 'orders': []})
+        
+        # Group orders by their group/session
+        grouped_orders = {}
+        for order in orders:
+            group_key = order['order_group'] or 'original'
+            reorder_num = order['reorder_number'] or 0
+            
+            if group_key not in grouped_orders:
+                grouped_orders[group_key] = {
+                    'reorder_number': reorder_num,
+                    'status': order['status'],
+                    'total': 0,
+                    'items': []
+                }
+            
+            try:
+                items = json.loads(order['items'])
+                grouped_orders[group_key]['items'].extend(items)
+                grouped_orders[group_key]['total'] += order['total']
+                grouped_orders[group_key]['status'] = order['status']
+            except:
+                pass
+        
+        # Convert to list format
+        orders_list = []
+        for group_key, group_data in grouped_orders.items():
+            orders_list.append({
+                'id': group_key,
+                'status': group_data['status'],
+                'total': group_data['total'],
+                'items': [{
+                    'reorder_number': group_data['reorder_number'],
+                    'items': group_data['items']
+                }]
+            })
+        
+        return jsonify({'success': True, 'orders': orders_list})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/get-store-info')
 def get_store_info():
     """Get store information for customer order page"""

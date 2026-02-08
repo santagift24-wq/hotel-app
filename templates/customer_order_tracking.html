@@ -325,6 +325,17 @@
             transform: translateY(-2px);
         }
 
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #da190b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+        }
+
         .btn-warning {
             background: #FF9800;
             color: white;
@@ -453,8 +464,8 @@
             <button class="btn btn-secondary" onclick="requestReorder()" id="reorderBtn" style="display: none;">
                 <i class="fas fa-redo"></i> Reorder
             </button>
-            <button class="btn btn-print" onclick="printBill()" id="printBtn" style="display: none;">
-                <i class="fas fa-print"></i> Print Bill
+            <button class="btn btn-danger" onclick="endService()" id="noServiceBtn" style="display: none;">
+                <i class="fas fa-door-open"></i> No Service
             </button>
         </div>
     </div>
@@ -501,13 +512,13 @@
                     const latestOrder = data.orders[0];
                     document.getElementById('reorderBtn').style.display = 
                         latestOrder.status === 'completed' ? 'flex' : 'none';
-                    document.getElementById('printBtn').style.display = 
+                    document.getElementById('noServiceBtn').style.display = 
                         latestOrder.status === 'completed' ? 'flex' : 'none';
                 } else {
                     noOrders.style.display = 'block';
                     orderContainer.innerHTML = '';
                     document.getElementById('reorderBtn').style.display = 'none';
-                    document.getElementById('printBtn').style.display = 'none';
+                    document.getElementById('noServiceBtn').style.display = 'none';
                 }
             } catch (error) {
                 console.error('Error loading orders:', error);
@@ -631,6 +642,10 @@
                                 <span>Total Amount</span>
                                 <span>₹${data.total_amount.toFixed(2)}</span>
                             </div>
+                            <div style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; text-align: center;">
+                                <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Thank you for your order!</p>
+                                <p style="font-size: 11px; color: #999;">Please review your bill above before leaving.</p>
+                            </div>
                         </div>
                     `;
 
@@ -641,46 +656,36 @@
             }
         }
 
-        async function printBill() {
-            try {
-                // Print the bill section
-                const billSection = document.querySelector('.bill-section');
-                const printWindow = window.open('', '_blank');
-                printWindow.document.write(`
-                    <html>
-                        <head>
-                            <title>Bill</title>
-                            <style>
-                                body { font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 20px; }
-                                h3 { text-align: center; }
-                                .bill-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #ddd; }
-                                .bill-total { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #333; font-weight: bold; font-size: 18px; }
-                            </style>
-                        </head>
-                        <body>
-                            ${billSection.innerHTML}
-                            <p style="text-align: center; margin-top: 30px; font-size: 12px; color: #666;">Thank you for your order!</p>
-                        </body>
-                    </html>
-                `);
-                printWindow.document.close();
-                printWindow.print();
+        async function endService() {
+            if (!confirm('Are you sure you want to end service? This will clear the table for the next customer.')) {
+                return;
+            }
 
-                // Mark bill as printed
-                const response = await fetch('/api/print-bill', {
+            try {
+                const response = await fetch('/api/no-service', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ table_number: tableNumber, hotel_slug: hotelSlug })
+                    body: JSON.stringify({ 
+                        table_number: tableNumber, 
+                        hotel_slug: hotelSlug 
+                    })
                 });
 
                 const data = await response.json();
                 if (data.success) {
-                    showMessage('Bill printed successfully! Session cleared.', 'success');
-                    setTimeout(() => window.location.reload(), 2000);
+                    showMessage('✓ Service ended. Table cleared for next customer!', 'success');
+                    setTimeout(() => {
+                        orderContainer.innerHTML = '';
+                        noOrders.style.display = 'block';
+                        document.getElementById('reorderBtn').style.display = 'none';
+                        document.getElementById('noServiceBtn').style.display = 'none';
+                    }, 2000);
+                } else {
+                    showMessage(`Error: ${data.error}`, 'error');
                 }
             } catch (error) {
-                console.error('Print error:', error);
-                showMessage(`Error printing: ${error}`, 'error');
+                console.error('Error ending service:', error);
+                showMessage(`Error: ${error}`, 'error');
             }
         }
 
