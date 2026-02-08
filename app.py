@@ -2376,77 +2376,6 @@ def get_hotel_name():
     hotel_name = result['hotel_name'] if result else 'Royal Restaurant'
     return jsonify({'success': True, 'hotel_name': hotel_name})
 
-@app.route('/api/settings/auto-accept', methods=['GET', 'POST'])
-def auto_accept_setting():
-    """Get or set auto-accept orders setting"""
-    hotel_id = get_current_hotel_id()
-    conn = get_db()
-    c = conn.cursor()
-    
-    if request.method == 'GET':
-        c.execute('SELECT auto_accept_orders FROM settings WHERE id = ?', (hotel_id,))
-        result = c.fetchone()
-        conn.close()
-        auto_accept = result['auto_accept_orders'] if result else 0
-        return jsonify({'success': True, 'auto_accept': auto_accept})
-    
-    elif request.method == 'POST':
-        data = request.get_json()
-        auto_accept = data.get('auto_accept', 0)
-        hotel_id = get_current_hotel_id()
-        conn = get_db()
-        c = conn.cursor()
-        c.execute('UPDATE settings SET auto_accept_orders = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (auto_accept, hotel_id))
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True, 'auto_accept': auto_accept})
-
-@app.route('/api/settings/profile', methods=['GET', 'POST'])
-@admin_only
-def profile_setting():
-    """Get or update restaurant profile"""
-    hotel_id = get_current_hotel_id()
-    conn = get_db()
-    c = conn.cursor()
-    
-    if request.method == 'GET':
-        c.execute('SELECT * FROM settings WHERE id = ?', (hotel_id,))
-        result = c.fetchone()
-        conn.close()
-        
-        if result:
-            return jsonify({
-                'success': True,
-                'profile': {
-                    'hotel_name': result['hotel_name'] or 'Royal Restaurant',
-                    'hotel_address': result['hotel_address'] or '',
-                    'hotel_email': result['owner_email'] or '',
-                    'hotel_gstn': result['hotel_gstn'] or '',
-                    'hotel_food_license': result['hotel_food_license'] or '',
-                    'print_name': result['print_name'] if result['print_name'] is not None else 1,
-                    'print_address': result['print_address'] if result['print_address'] is not None else 1,
-                    'print_gstn': result['print_gstn'] if result['print_gstn'] is not None else 1,
-                    'print_license': result['print_license'] if result['print_license'] is not None else 1
-                }
-            })
-        return jsonify({'success': False, 'message': 'Profile not found'})
-    
-    elif request.method == 'POST':
-        data = request.get_json()
-        hotel_id = get_current_hotel_id()
-        conn = get_db()
-        c = conn.cursor()
-        c.execute('''UPDATE settings SET 
-                     hotel_name = ?,
-                     hotel_address = ?,
-                     owner_email = ?,
-                     hotel_gstn = ?,
-                     hotel_food_license = ?,
-                     print_name = ?,
-                     print_address = ?,
-                     print_gstn = ?,
-                     print_license = ?,
-                     updated_at = CURRENT_TIMESTAMP
                      WHERE id = ?''',
                  (data.get('hotel_name', 'Royal Restaurant'),
                   data.get('hotel_address', ''),
@@ -2590,87 +2519,6 @@ def view_order(order_id):
         }
     
     return render_template('admin/order_details.html', order=order_dict, profile=profile)
-
-@app.route('/api/table-session-bill', methods=['GET'])
-@login_required
-def get_table_session_bill():
-    """Get combined bill for all orders from a specific table/order_group"""
-    try:
-        table_number = request.args.get('table_number')
-        order_id = request.args.get('order_id')
-        
-        if not table_number or not order_id:
-            return jsonify({'success': False, 'error': 'Missing parameters'}), 400
-        
-        hotel_id = get_current_hotel_id()
-        conn = get_db()
-        c = conn.cursor()
-        
-        # Get the order to find its order_group
-        c.execute('SELECT order_group FROM orders WHERE id = ? AND hotel_id = ?', (order_id, hotel_id))
-        original_order = c.fetchone()
-        
-        if not original_order:
-            conn.close()
-            return jsonify({'success': False, 'error': 'Order not found'}), 404
-        
-        order_group = original_order['order_group']
-        
-        # Get all orders in this group (all orders for this table session)
-        c.execute('''SELECT * FROM orders 
-                   WHERE hotel_id = ? AND table_number = ? AND order_group = ?
-                   ORDER BY reorder_number, created_at''',
-                 (hotel_id, table_number, order_group))
-        
-        orders = c.fetchall()
-        
-        # Get hotel info
-        c.execute('SELECT hotel_name, hotel_address FROM settings WHERE id = ?', (hotel_id,))
-        hotel = c.fetchone()
-        
-        conn.close()
-        
-        if not orders:
-            return jsonify({'success': False, 'error': 'No orders found'}), 404
-        
-        # Combine all items from all orders
-        all_items = []
-        total_subtotal = 0
-        total_tax = 0
-        total_service_charge = 0
-        total_amount = 0
-        
-        for order in orders:
-            try:
-                items = json.loads(order['items'])
-                all_items.append({
-                    'order_number': order['reorder_number'] if order['reorder_number'] > 0 else 'Original',
-                    'items': items
-                })
-            except:
-                pass
-            
-            total_subtotal += order['subtotal'] or 0
-            total_tax += order['tax'] or 0
-            total_service_charge += order['service_charge'] or 0
-            total_amount += order['total'] or 0
-        
-        return jsonify({
-            'success': True,
-            'hotel_name': hotel['hotel_name'] if hotel else 'Restaurant',
-            'table_number': table_number,
-            'order_group': order_group,
-            'all_orders': all_items,
-            'total_subtotal': total_subtotal,
-            'total_tax': total_tax,
-            'total_service_charge': total_service_charge,
-            'total_amount': total_amount,
-            'order_count': len(orders),
-            'print_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        })
-    
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/admin/order/<int:order_id>/accept', methods=['POST'])
 @login_required
@@ -3590,28 +3438,6 @@ def contact():
     
     return render_template('contact.html')
 
-@app.route('/api/create-order', methods=['POST'])
-def api_create_order():
-    """Create Razorpay order for subscription"""
-    if 'hotel_id' not in session:
-        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
-    
-    hotel_id = session['hotel_id']
-    plan = request.json.get('plan')
-    
-    if plan not in SUBSCRIPTION_PLANS:
-        return jsonify({'success': False, 'message': 'Invalid plan'}), 400
-    
-    try:
-        # Check if hotel already has an active subscription
-        has_active_sub, existing_plan = check_existing_subscription(hotel_id)
-        if has_active_sub:
-            print(f"[WARNING] Hotel {hotel_id} already has active {existing_plan} subscription")
-            return jsonify({
-                'success': False, 
-                'message': f'Your hotel already has an active {existing_plan} subscription (Expires {datetime.now().strftime("%Y-%m-%d")}). You cannot subscribe again until it expires. If you want to upgrade, please contact support.',
-                'existing_subscription': True,
-                'existing_plan': existing_plan
             }), 400
         
         print(f"[OK] Creating Razorpay order for hotel {hotel_id} - {plan} plan")
@@ -3901,25 +3727,22 @@ if __name__ == '__main__':
         """
         try:
             db_exists = os.path.exists(DB_PATH)
-            writable = verify_db_writable() if db_exists else False
-            
+            # writable = verify_db_writable() if db_exists else False
             db_size = 0
             if db_exists:
                 db_size = os.path.getsize(DB_PATH) / 1024
-            
             env = os.environ.get('PORT')  # If PORT is set, likely on Railway
-            
             return jsonify({
                 'timestamp': datetime.now().isoformat(),
                 'database_path': DB_PATH,
                 'database_exists': db_exists,
                 'database_size_kb': round(db_size, 2),
-                'persistent_storage_enabled': USING_PERSISTENT_STORAGE,
-                'writable': writable,
+                # 'persistent_storage_enabled': USING_PERSISTENT_STORAGE,  # Removed undefined variable
+                # 'writable': writable,  # Removed undefined function
                 'is_production': env is not None,
                 'app_directory': os.path.dirname(os.path.abspath(__file__)),
                 'data_volume_exists': os.path.exists('/data'),
-                'message': 'YES - Data persists' if USING_PERSISTENT_STORAGE else 'NO - Data will be lost on redeploy (add /data volume)'
+                # 'message': 'YES - Data persists' if USING_PERSISTENT_STORAGE else 'NO - Data will be lost on redeploy (add /data volume)'
             })
         except Exception as e:
             return jsonify({
@@ -4259,72 +4082,6 @@ def get_store_profile():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/update-store-profile', methods=['POST'])
-@login_required
-def update_store_profile():
-    """Update store profile information"""
-    try:
-        hotel_id = get_current_hotel_id()
-        if not hotel_id:
-            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
-        
-        section = request.form.get('section')
-        conn = get_db()
-        c = conn.cursor()
-        
-        if section == 'basic':
-            # Update hotel settings
-            c.execute('''UPDATE settings 
-                        SET hotel_name = ?, hotel_address = ?, 
-                            updated_at = CURRENT_TIMESTAMP
-                        WHERE id = ?''',
-                     (request.form.get('store_name'), 
-                      request.form.get('street_address'),
-                      hotel_id))
-            
-            # Update or insert store profile
-            c.execute('''INSERT OR REPLACE INTO store_profiles 
-                        (hotel_id, phone_number, store_email, street_address, city, 
-                         state, postal_code, cuisine_type, store_description)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                     (hotel_id,
-                      request.form.get('phone_number'),
-                      request.form.get('store_email'),
-                      request.form.get('street_address'),
-                      request.form.get('city'),
-                      request.form.get('state'),
-                      request.form.get('postal_code'),
-                      request.form.get('cuisine_type'),
-                      request.form.get('store_description')))
-        
-        elif section == 'hours':
-            c.execute('''UPDATE store_profiles 
-                        SET open_time = ?, close_time = ?, 
-                            working_days = ?, holiday_dates = ?
-                        WHERE hotel_id = ?''',
-                     (request.form.get('open_time'),
-                      request.form.get('close_time'),
-                      request.form.get('working_days'),
-                      request.form.get('holiday_dates'),
-                      hotel_id))
-        
-        elif section == 'appearance':
-            c.execute('''INSERT OR REPLACE INTO store_websites 
-                        (hotel_id, website_theme, website_color, 
-                         website_title, website_description)
-                        VALUES (?, ?, ?, ?, ?)''',
-                     (hotel_id,
-                      request.form.get('website_theme'),
-                      request.form.get('website_color'),
-                      request.form.get('website_title'),
-                      request.form.get('website_description')))
-        
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True})
-    
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/upload-store-photos', methods=['POST'])
 @login_required
