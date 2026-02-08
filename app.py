@@ -4030,6 +4030,55 @@ def get_store_photos():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/delete-photo', methods=['POST'])
+@login_required
+def delete_photo():
+    """Delete a photo from store gallery"""
+    try:
+        hotel_id = get_current_hotel_id()
+        if not hotel_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        data = request.get_json()
+        photo_id = data.get('photo_id')
+        
+        if not photo_id:
+            return jsonify({'success': False, 'error': 'Photo ID required'}), 400
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get photo details
+        c.execute('SELECT photo_url FROM store_gallery WHERE id = ? AND hotel_id = ?',
+                 (photo_id, hotel_id))
+        photo = c.fetchone()
+        
+        if not photo:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Photo not found'}), 404
+        
+        # Delete physical file
+        photo_path = photo['photo_url']
+        if photo_path.startswith('/'):
+            photo_path = photo_path[1:]
+        
+        try:
+            if os.path.exists(photo_path):
+                os.remove(photo_path)
+        except Exception as file_error:
+            pass  # Continue even if file deletion fails
+        
+        # Delete from database
+        c.execute('DELETE FROM store_gallery WHERE id = ? AND hotel_id = ?',
+                 (photo_id, hotel_id))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Photo deleted successfully'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/upload-logo', methods=['POST'])
 @login_required
 def upload_logo():

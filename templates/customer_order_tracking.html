@@ -458,7 +458,7 @@
 
         <!-- Buttons -->
         <div class="button-group">
-            <button class="btn btn-primary" onclick="placeNewOrder()">
+            <button class="btn btn-primary" id="placeOrderBtn" onclick="placeNewOrder()">
                 <i class="fas fa-plus"></i> Place Order
             </button>
             <button class="btn btn-secondary" onclick="requestReorder()" id="reorderBtn" style="display: none;">
@@ -505,8 +505,12 @@
                 loading.style.display = 'none';
 
                 if (data.success && data.orders.length > 0) {
+                    // Has active orders - show orders and buttons
                     noOrders.style.display = 'none';
                     renderOrders(data.orders);
+                    
+                    // Hide Place Order button when there are active orders
+                    document.getElementById('placeOrderBtn').style.display = 'none';
                     
                     // Show buttons based on latest order status
                     const latestOrder = data.orders[0];
@@ -514,13 +518,14 @@
                         latestOrder.status === 'completed' ? 'flex' : 'none';
                     document.getElementById('noServiceBtn').style.display = 'flex';
                 } else {
-                    // No active orders - show empty state with bill and No Service button
+                    // No active orders - show Place Order button and try to show bill
                     noOrders.style.display = 'block';
                     orderContainer.innerHTML = '';
+                    document.getElementById('placeOrderBtn').style.display = 'flex';
                     document.getElementById('reorderBtn').style.display = 'none';
-                    document.getElementById('noServiceBtn').style.display = 'flex';
+                    document.getElementById('noServiceBtn').style.display = 'none';
                     
-                    // Still try to get and show bill even if no active orders
+                    // Try to get and show bill even if no active orders
                     try {
                         const billResponse = await fetch(
                             `/api/get-bill?table=${tableNumber}&hotel=${hotelSlug}`
@@ -617,7 +622,6 @@
             } catch (error) {
                 console.log('Bill not available yet');
             }
-        }
         }
 
         async function generateBill(billData) {

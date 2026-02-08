@@ -891,6 +891,36 @@
             });
         }
         
+        function deletePhoto(photoId) {
+            if (!confirm('Are you sure you want to delete this photo?')) {
+                return;
+            }
+            
+            fetch('/api/delete-photo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ photo_id: photoId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Photo deleted successfully');
+                    loadPhotoGallery();
+                } else {
+                    alert('Error deleting photo: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                alert('Error deleting photo: ' + error);
+            });
+        }
+        
+        function featurePhoto(photoId) {
+            alert('Feature photo (marked for prominence on website listing)');
+        }
+        
         function uploadLogo() {
             const fileInput = document.getElementById('logoInput');
             const file = fileInput.files[0];
