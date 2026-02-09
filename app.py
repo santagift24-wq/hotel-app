@@ -4838,7 +4838,7 @@ def api_approve_store(store_id):
                         service_table_management = 1,
                         service_analytics = 1,
                         service_payments = 1
-                    WHERE id = ?''',
+                    WHERE id = ?'''
                  ('approved', store_id))
         conn.commit()
         conn.close()
