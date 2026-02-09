@@ -46,11 +46,11 @@
                 </div>
                 <div class="cart-total">
                     <div>
-                        <div class="subtotal">Subtotal: ₹<span id="subtotal">0</span></div>
-                        <div class="tax">Tax: ₹<span id="tax">0</span></div>
-                        <div class="service-charge">Service: ₹<span id="serviceCharge">0</span></div>
+                        <div class="subtotal">Subtotal: {{ currency_symbol }}<span id="subtotal">0</span></div>
+                        <div class="tax">Tax: {{ currency_symbol }}<span id="tax">0</span></div>
+                        <div class="service-charge">Service: {{ currency_symbol }}<span id="serviceCharge">0</span></div>
                     </div>
-                    <div class="total-amount">Total: ₹<span id="total">0</span></div>
+                    <div class="total-amount">Total: {{ currency_symbol }}<span id="total">0</span></div>
                     <button class="btn btn-primary" onclick="confirmOrder()">Order Now</button>
                 </div>
             </div>

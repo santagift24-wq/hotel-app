@@ -1600,6 +1600,46 @@ def get_current_hotel_id():
         return session.get('admin_id', 1)
     return 1  # Default to first hotel
 
+def get_currency_symbol(hotel_id=None):
+    """Get the currency symbol for the current hotel"""
+    if hotel_id is None:
+        hotel_id = get_current_hotel_id()
+    
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT currency FROM settings WHERE id = ?', (hotel_id,))
+    result = c.fetchone()
+    conn.close()
+    
+    if result and result[0]:
+        currency = result[0]
+        # Map currency codes to symbols
+        currency_symbols = {
+            'INR': '₹',
+            'USD': '$',
+            'EUR': '€',
+            'GBP': '£',
+            'JPY': '¥',
+            'CNY': '¥',
+            'AUD': 'A$',
+            'CAD': 'C$',
+            'SGD': 'S$',
+            'ZAR': 'R',
+            'BRL': 'R$',
+            'MXN': 'Mex$',
+            'AED': 'د.إ',
+            'SAR': 'ر.س',
+            'RUB': '₽',
+            'KRW': '₩',
+            'THB': '฿',
+            'IDR': 'Rp',
+            'TRY': '₺',
+            'NGN': '₦'
+        }
+        return currency_symbols.get(currency, '₹')  # Default to INR if not found
+    
+    return '₹'  # Default fallback
+
 def login_required(f):
     """Admin login required decorator"""
     @wraps(f)
@@ -2333,11 +2373,12 @@ def admin_settings():
     
     if request.method == 'POST':
         hotel_name = request.form.get('hotel_name', 'Royal Restaurant')
+        currency = request.form.get('currency', 'INR')
         
         conn = get_db()
         c = conn.cursor()
         # Update ONLY current hotel's settings
-        c.execute('UPDATE settings SET hotel_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (hotel_name, current_hotel_id))
+        c.execute('UPDATE settings SET hotel_name = ?, currency = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (hotel_name, currency, current_hotel_id))
         conn.commit()
         conn.close()
         
@@ -3211,6 +3252,7 @@ def order_page(table_id):
     
     hotel_name = settings['hotel_name'] if settings else 'Royal Restaurant'
     logo_url = store_profile['logo_url'] if store_profile else None
+    currency_symbol = get_currency_symbol(hotel_id)
     
     conn.close()
     
@@ -3220,7 +3262,8 @@ def order_page(table_id):
                          hotel_name=hotel_name,
                          logo_url=logo_url,
                          store_profile=store_profile,
-                         is_table_busy=is_table_busy)
+                         is_table_busy=is_table_busy,
+                         currency_symbol=currency_symbol)
 
 # ============================================================================
 # API ROUTES
@@ -3322,7 +3365,7 @@ def place_order():
     auto_accept = int(settings['auto_accept_orders']) if settings and settings['auto_accept_orders'] else 0
     
     # Set order status based on auto-accept setting
-    order_status = 'confirmed' if (auto_accept == 1) else 'pending'
+    order_status = 'accepted' if (auto_accept == 1) else 'pending'
     
     # Insert order with hotel_id
     c.execute('INSERT INTO orders (hotel_id, table_id, table_number, items, subtotal, tax, service_charge, total, status, assigned_to) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
