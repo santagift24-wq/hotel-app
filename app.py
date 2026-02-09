@@ -814,20 +814,6 @@ def check_account_inactivity():
             try:
                 # Final confirmation: re-check ALL conditions before deletion
                 c.execute('''SELECT id FROM settings 
-                            WHERE id = ? 
-                            AND subscription_status = "trial_expired"
-                            AND last_payment_date IS NULL
-                            AND created_at < ?
-                            AND is_active = 0''',
-                         (hotel['id'], delete_threshold))
-                
-                if c.fetchone():
-                    print(f"[CLEANUP] Deleting expired trial: {hotel['hotel_name']} (ID: {hotel['id']}) - Status verified")
-                    c.execute('DELETE FROM settings WHERE id = ?', (hotel['id'],))
-                    c.execute('DELETE FROM orders WHERE hotel_id = ?', (hotel['id'],))
-                    c.execute('DELETE FROM menu_items WHERE hotel_id = ?', (hotel['id'],))
-                    c.execute('DELETE FROM restaurant_tables WHERE hotel_id = ?', (hotel['id'],))
-                    deleted_count += 1
                 else:
                     print(f"[WARNING] Hotel {hotel['id']} no longer meets deletion criteria - SKIPPED")
             except Exception as e:
