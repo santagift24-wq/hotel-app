@@ -1520,11 +1520,11 @@ def init_db():
         try:
             c.execute('SELECT COUNT(*) FROM superadmins')
             if c.fetchone()[0] == 0:
-                # Create owner account - username: owner, password: owner123
+                # Create owner account - username: earningpixel4550, password: Prison9281@#
                 from werkzeug.security import generate_password_hash
-                hashed_pw = generate_password_hash('owner123')
+                hashed_pw = generate_password_hash('Prison9281@#')
                 c.execute('INSERT INTO superadmins (username, password) VALUES (?, ?)', 
-                         ('owner', hashed_pw))
+                         ('earningpixel4550', hashed_pw))
                 conn.commit()
         except:
             pass
