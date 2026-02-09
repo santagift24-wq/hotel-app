@@ -584,7 +584,7 @@
                 </div>
                 <div class="stat-card">
                     <h3>Today's Revenue</h3>
-                    <p>₹{{ "%.2f"|format(stats.revenue) }}</p>
+                    <p>{{ currency_symbol }}{{ "%.2f"|format(stats.revenue) }}</p>
                 </div>
             </div>
             
@@ -748,6 +748,7 @@
                     const resultDiv = document.getElementById('customSummaryResults');
                     if (data.success) {
                         const summary = data.summary;
+                        const currencySymbol = data.currency_symbol || '₹';
                         resultDiv.innerHTML = `
                             <div class="summary-item">
                                 <div class="summary-label">Total Orders</div>
@@ -756,8 +757,8 @@
                             </div>
                             <div class="summary-item revenue">
                                 <div class="summary-label">Total Revenue</div>
-                                <div class="summary-value">₹${summary.total_revenue.toFixed(0)}</div>
-                                <div class="summary-avg">Avg/Day: ₹${(summary.total_revenue / days).toFixed(0)}</div>
+                                <div class="summary-value">${currencySymbol}${summary.total_revenue.toFixed(0)}</div>
+                                <div class="summary-avg">Avg/Day: ${currencySymbol}${(summary.total_revenue / days).toFixed(0)}</div>
                             </div>
                             <div class="summary-item completed">
                                 <div class="summary-label">Completed Orders</div>

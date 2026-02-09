@@ -344,11 +344,12 @@ def generate_daily_report_pdf(hotel_id, hotel_name, owner_email):
         story.append(Paragraph("SUMMARY", styles['Heading2']))
         total_orders = order_stats['count'] or 0
         total_revenue = order_stats['revenue'] or 0
+        currency_symbol = get_currency_symbol(hotel_id)
         
         summary_data = [
             ['Total Orders (24h)', str(total_orders)],
-            ['Total Revenue (24h)', f'₹{total_revenue:.2f}'],
-            ['Average Order Value', f'₹{(total_revenue/total_orders if total_orders > 0 else 0):.2f}']
+            ['Total Revenue (24h)', f'{currency_symbol}{total_revenue:.2f}'],
+            ['Average Order Value', f'{currency_symbol}{(total_revenue/total_orders if total_orders > 0 else 0):.2f}']
         ]
         summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
         summary_table.setStyle(TableStyle([
@@ -2032,9 +2033,10 @@ def admin_dashboard():
     revenue = c.fetchone()['revenue'] or 0
     
     # Get this hotel's settings
-    c.execute('SELECT hotel_name FROM settings WHERE id = ?', (hotel_id,))
+    c.execute('SELECT hotel_name, currency FROM settings WHERE id = ?', (hotel_id,))
     settings = c.fetchone()
     hotel_name = settings['hotel_name'] if settings else 'My Hotel'
+    currency_symbol = get_currency_symbol(hotel_id)
     
     stats = {
         'total': total,
@@ -2048,7 +2050,8 @@ def admin_dashboard():
     return render_template('admin/dashboard.html', 
                          orders=orders,
                          stats=stats,
-                         hotel_name=hotel_name)
+                         hotel_name=hotel_name,
+                         currency_symbol=currency_symbol)
 
 @app.route('/admin/profile', methods=['GET'])
 @admin_only
@@ -2228,14 +2231,15 @@ def download_dashboard_pdf():
     story.append(Spacer(1, 0.3*inch))
     
     # Summary statistics
+    currency_symbol = get_currency_symbol(hotel_id)
     summary_data = [
         ['Metric', 'Value'],
         ['Total Orders', str(summary['total_orders'] or 0)],
         ['Completed Orders', str(summary['completed_orders'] or 0)],
         ['Pending Orders', str(summary['pending_orders'] or 0)],
         ['Declined Orders', str(summary['declined_orders'] or 0)],
-        ['Total Revenue', f"₹{(summary['total_revenue'] or 0):.2f}"],
-        ['Average Order Value', f"₹{((summary['total_revenue'] or 0) / max(1, summary['total_orders'] or 1)):.2f}"],
+        ['Total Revenue', f"{currency_symbol}{(summary['total_revenue'] or 0):.2f}"],
+        ['Average Order Value', f"{currency_symbol}{((summary['total_revenue'] or 0) / max(1, summary['total_orders'] or 1)):.2f}"],
     ]
     
     summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
@@ -2318,6 +2322,9 @@ def dashboard_custom_summary():
     
     conn.close()
     
+    # Get currency symbol for this hotel
+    currency_symbol = get_currency_symbol(hotel_id)
+    
     return jsonify({
         'success': True,
         'summary': {
@@ -2327,7 +2334,8 @@ def dashboard_custom_summary():
             'pending_orders': result['pending_orders'] or 0,
             'declined_orders': result['declined_orders'] or 0,
             'confirmed_orders': result['confirmed_orders'] or 0
-        }
+        },
+        'currency_symbol': currency_symbol
     })
 
 @app.route('/admin/tables', methods=['GET', 'POST'])
@@ -3562,9 +3570,12 @@ def api_kitchen_orders():
             order_dict['parsed_items'] = []
         orders.append(order_dict)
     
+    # Get currency symbol for this hotel
+    currency_symbol = get_currency_symbol(hotel_id)
+    
     conn.close()
     
-    return jsonify({'success': True, 'orders': orders})
+    return jsonify({'success': True, 'orders': orders, 'currency_symbol': currency_symbol})
 
 # ============================================================================
 # SUBSCRIPTION & INFORMATION PAGES ROUTES
