@@ -1480,6 +1480,12 @@ def init_db():
             pass
         
         try:
+            c.execute('ALTER TABLE settings ADD COLUMN currency TEXT DEFAULT "INR"')
+            conn.commit()
+        except:
+            pass
+        
+        try:
             c.execute('ALTER TABLE store_profiles ADD COLUMN rating REAL DEFAULT 0')
             conn.commit()
         except:
