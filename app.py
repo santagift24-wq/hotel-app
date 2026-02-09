@@ -4982,6 +4982,14 @@ def place_order_api():
         if not hotel:
             return jsonify({'success': False, 'error': 'Hotel not found'})
         
+        # Check auto-accept setting for this hotel
+        c.execute('SELECT auto_accept_orders FROM settings WHERE id = ?', (hotel['id'],))
+        settings = c.fetchone()
+        auto_accept = int(settings['auto_accept_orders']) if settings and settings['auto_accept_orders'] else 0
+        
+        # Set order status based on auto-accept setting
+        order_status = 'confirmed' if (auto_accept == 1) else 'pending'
+        
         # Generate order group (to group original + reorders)
         order_group = str(uuid4())
         session_id = data.get('session_id') or str(uuid4())
@@ -4990,11 +4998,11 @@ def place_order_api():
         c.execute('''INSERT INTO orders 
                     (hotel_id, table_number, items, subtotal, tax, total, 
                      status, order_group, reorder_number, session_id)
-                    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, 0, ?)''',
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)''',
                  (hotel['id'], data.get('table_number'),
                   data.get('items'), data.get('subtotal'),
                   data.get('tax'), data.get('total'),
-                  order_group, session_id))
+                  order_status, order_group, session_id))
         
         conn.commit()
         order_id = c.lastrowid
