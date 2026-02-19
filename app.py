@@ -2570,13 +2570,7 @@ def admin_orders():
     hotel_id = get_current_hotel_id()
     conn = get_db()
     c = conn.cursor()
-    # Pagination
-    page = request.args.get('page', 1, type=int)
-    per_page = 20
-    offset = (page - 1) * per_page
-    c.execute('SELECT COUNT(*) FROM orders WHERE hotel_id = ?', (hotel_id,))
-    total_orders = c.fetchone()[0]
-    c.execute('SELECT * FROM orders WHERE hotel_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?', (hotel_id, per_page, offset))
+    c.execute('SELECT * FROM orders WHERE hotel_id = ? ORDER BY created_at DESC', (hotel_id,))
     orders_raw = c.fetchall()
     
     # Get sub-admins for assignment dropdown
@@ -2595,8 +2589,7 @@ def admin_orders():
             order_dict['parsed_items'] = []
         orders.append(order_dict)
     
-    total_pages = (total_orders + per_page - 1) // per_page
-    return render_template('admin/orders.html', orders=orders, subadmins=subadmins, page=page, total_pages=total_pages)
+    return render_template('admin/orders.html', orders=orders, subadmins=subadmins)
 
 @app.route('/admin/order/<int:order_id>/view', methods=['GET'])
 @login_required

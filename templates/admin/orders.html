@@ -512,18 +512,6 @@
                     </tbody>
                 </table>
             </div>
-            <div style="margin-top: 20px; text-align: center;">
-                {% if page > 1 %}
-                    <a href="{{ url_for('admin_orders', page=page-1) }}" class="btn" style="margin-right: 10px; padding: 8px 18px; background: #f0f0f0; border-radius: 5px; text-decoration: none;">&laquo; Back</a>
-                {% endif %}
-                <span style="font-weight: 600; color: #555;">Page {{ page }} of {{ total_pages }}</span>
-                {% if page < total_pages %}
-                    <a href="{{ url_for('admin_orders', page=page+1) }}" class="btn" style="margin-left: 10px; padding: 8px 18px; background: #f0f0f0; border-radius: 5px; text-decoration: none;">Next &raquo;</a>
-                {% endif %}
-            </div>
-                    </tbody>
-                </table>
-            </div>
             {% else %}
             <div class="empty-state">
                 <p>No orders yet</p>
