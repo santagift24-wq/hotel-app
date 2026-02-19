@@ -1,3 +1,22 @@
+@app.route('/admin/store/<int:store_id>/reapprove', methods=['POST'])
+@login_required
+def reapprove_store(store_id):
+    """Reapprove a suspended store"""
+    conn = get_db()
+    c = conn.cursor()
+    # Only allow if current user is owner/main admin
+    hotel_id = get_current_hotel_id()
+    # Check if store exists and is suspended
+    c.execute('SELECT approval_status FROM settings WHERE id = ?', (store_id,))
+    store = c.fetchone()
+    if not store or store['approval_status'] != 'suspended':
+        conn.close()
+        return jsonify({'success': False, 'message': 'Store not found or not suspended'})
+    # Update approval_status to approved
+    c.execute('UPDATE settings SET approval_status = ? WHERE id = ?', ('approved', store_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Store reapproved'})
 """
 Real-Time Restaurant Ordering System - Flask Backend
 Complete with SQLite database, QR codes, real order management

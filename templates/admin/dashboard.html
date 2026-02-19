@@ -663,10 +663,30 @@
                                         <div class="action-buttons">
                                             <button class="btn-complete" onclick="completeOrder({{ order.id }})">✓ Complete</button>
                                         </div>
+                                    {% elif order.status == 'suspended' %}
+                                        <div class="action-buttons">
+                                            <button class="btn-reapprove" onclick="reapproveStore({{ order.id }})" style="background: #4CAF50; color: white;">Reapprove</button>
+                                        </div>
                                     {% else %}
                                         <span class="status-badge status-{{ order.status }}">{{ order.status|upper }}</span>
                                     {% endif %}
                                 </td>
+                                    function reapproveStore(storeId) {
+                                        if (confirm('Reapprove this suspended store?')) {
+                                            fetch('/admin/store/' + storeId + '/reapprove', {
+                                                method: 'POST'
+                                            })
+                                            .then(r => r.json())
+                                            .then(data => {
+                                                if (data.success) {
+                                                    alert('Store reapproved!');
+                                                    location.reload();
+                                                } else {
+                                                    alert('❌ Error: ' + data.message);
+                                                }
+                                            });
+                                        }
+                                    }
                             </tr>
                             {% endfor %}
                         </tbody>
